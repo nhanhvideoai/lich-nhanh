@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2a2522">
+<title>Lịch Nhanh</title>
+<style>
+/* Layout: HyperOS-style — blurred wallpaper, liquid-glass panels; sheets grow out of the tapped element like app launch. Single dark look by choice. */
+:root {
+  --ink: #ffffff;
+  --ink-2: rgba(255,255,255,.88);
+  --ink-3: rgba(255,255,255,.66);
+  --solid: linear-gradient(160deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.74) 55%, rgba(232,228,240,.62) 100%);
+  --solid-ink: #1d1b1e;
+  --accent: #3d82f6;
+  --sun: #ff8b7e;
+  --moon: #ffd27a;
+  --good: #7be0a6;
+  --shade: rgba(18,16,20,.30);
+  --sheet: linear-gradient(170deg, rgba(255,255,255,.16), rgba(255,255,255,.05) 50%, rgba(255,255,255,.10)), rgba(34,30,38,.38);
+  --r-panel: 22px;
+  --r-tile: 13px;
+  --spring: cubic-bezier(.2, 1.18, .32, 1);
+  --ease: cubic-bezier(.3, .9, .3, 1);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 15px/1.35 "MiSans", system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink); background: #2a2522;
+  padding-block: 12px 28px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+button { font: inherit; color: inherit; }
+
+/* Wallpaper */
+.wall { position: fixed; inset: 0; z-index: -2; background-size: cover; background-position: center; will-change: transform; transform: translateZ(0); }
+.wall.blobs { background:
+  radial-gradient(38% 30% at 18% 22%, #6f8fc9 0%, transparent 70%),
+  radial-gradient(34% 28% at 82% 30%, #c7764a 0%, transparent 70%),
+  radial-gradient(40% 30% at 30% 70%, #8a4c5a 0%, transparent 70%),
+  radial-gradient(36% 30% at 78% 78%, #c9a04a 0%, transparent 70%),
+  radial-gradient(30% 24% at 55% 50%, #3a5ea8 0%, transparent 70%), #3b332f; }
+.shade { position: fixed; inset: 0; z-index: -1; background: var(--shade); }
+
+/* Main screen — recedes (blur + shrink) when a sheet opens, like the home screen behind an app */
+.wrap { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+  transition: transform .42s var(--ease), opacity .42s var(--ease); transform-origin: 50% 40%; }
+.wrap.behind { transform: scale(.93); opacity: .8; pointer-events: none; }
+
+/* Liquid glass */
+.glass {
+  position: relative;
+  background: linear-gradient(170deg, rgba(255,255,255,.20), rgba(255,255,255,.07) 45%, rgba(255,255,255,.13));
+  border-radius: var(--r-panel);
+  box-shadow: inset 1.5px 1.5px 0 rgba(255,255,255,.75), inset -1.2px -1.2px 0 rgba(255,255,255,.45),
+    inset 0 0 0 1px rgba(255,255,255,.14), inset 0 0 18px rgba(255,255,255,.08), 0 6px 16px rgba(0,0,0,.18);
+}
+.round { border-radius: 14px; }
+.solid, .btn.solid, .day.today, .chip, .seg button.on, .mo.on { text-shadow: none; }
+
+/* Press feel: everything tappable sinks then springs back */
+.btn, .day, .ev, .seg button, .tool { transition: transform .35s var(--spring), background .2s; }
+.btn:active, .day:active, .ev:active, .seg button:active, .tool:active { transform: scale(.9); transition-duration: .12s; }
+
+/* Load-in: control-center style — from blurred and slightly small to sharp, staggered */
+@keyframes rise { from { opacity: 0; transform: scale(.92) translateY(10px); } }
+.wrap > * { animation: rise .55s var(--spring) backwards; }
+.wrap > *:nth-child(2) { animation-delay: .05s; } .wrap > *:nth-child(3) { animation-delay: .1s; }
+.wrap > *:nth-child(4) { animation-delay: .15s; } .wrap > *:nth-child(5) { animation-delay: .2s; }
+.wrap > *:nth-child(6) { animation-delay: .25s; }
+
+/* Header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 0; }
+.top .sub { font-size: 15px; font-weight: 600; }
+.top .right { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+.top .right b { color: var(--moon); font-weight: 600; }
+.top .seg { flex: none; width: 168px; }
+
+.bar { display: flex; align-items: center; gap: 8px; padding: 5px; }
+.bar .btn { width: 40px; height: 40px; font-size: 20px; }
+.bar h1 { flex: 1; margin: 0; font-size: 17px; font-weight: 600; text-align: center; min-width: 0; cursor: pointer; }
+.bar h1 small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.btn { border: 0; cursor: pointer; width: 52px; height: 52px; display: grid; place-items: center; font-size: 22px; background: none; }
+.btn.pill { width: auto; padding: 0 18px; font-size: 14px; font-weight: 600; }
+.btn.solid { background: var(--solid); color: var(--solid-ink); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.btn:focus-visible, .day:focus-visible, .ev:focus-visible, .tool:focus-visible, .seg button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.seg { display: flex; padding: 3px; gap: 3px; }
+.seg button { flex: 1; border: 0; background: none; padding: 7px 0; border-radius: 11px; font-weight: 600; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.seg button.on { background: var(--solid); color: var(--solid-ink); box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+
+/* Month grid */
+.month { padding: 14px 10px 12px; overflow: hidden; }
+.dow, .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.dow div { text-align: center; font-size: 13px; color: var(--ink-2); padding: 2px 0 8px; font-weight: 600; letter-spacing: .03em; }
+.dow div:last-child { color: var(--sun); }
+.days { row-gap: 6px; }
+.days.out-l { animation: outL .18s ease-in forwards; } .days.out-r { animation: outR .18s ease-in forwards; }
+.days.in-l { animation: inL .45s var(--spring); } .days.in-r { animation: inR .45s var(--spring); }
+@keyframes outL { to { opacity: 0; transform: translateX(-30px); } }
+@keyframes outR { to { opacity: 0; transform: translateX(30px); } }
+@keyframes inL { from { opacity: 0; transform: translateX(40px); } }
+@keyframes inR { from { opacity: 0; transform: translateX(-40px); } }
+.day { background: transparent; border: 0; cursor: pointer; aspect-ratio: 1 / 1.2; max-width: 100%; min-width: 0;
+  border-radius: var(--r-tile); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: relative; }
+.day:hover { background: rgba(255,255,255,.12); }
+.day .sn { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.day .ln { font-size: 12px; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.day .ln.hi { color: var(--moon); font-weight: 600; }
+.day.other { opacity: .45; }
+.day.sun .sn { color: var(--sun); }
+.day .dots { position: absolute; bottom: 4px; display: flex; gap: 3px; }
+.day .dots i { width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.day.today { background: var(--solid); color: var(--solid-ink); box-shadow: 0 6px 16px rgba(0,0,0,.2); }
+.day.today .ln { color: rgba(29,27,30,.55); } .day.today .ln.hi { color: #b86a00; } .day.today.sun .sn { color: #d9463a; }
+.day.selected:not(.today) { background: linear-gradient(170deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+  box-shadow: inset 0 0 0 1.4px rgba(255,255,255,.55), inset 0 0 14px rgba(255,255,255,.12); }
+
+/* Panels */
+.panel { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.panel h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 12px; }
+.chip { width: 58px; height: 58px; border-radius: 14px; background: var(--solid); color: var(--solid-ink);
+  display: grid; place-items: center; text-align: center; line-height: 1; flex: none; }
+.chip b { font-size: 24px; display: block; } .chip span { font-size: 10px; font-weight: 600; color: #d9463a; display: block; margin-top: 3px; }
+.meta { color: var(--ink-2); font-size: 13px; } .meta2 { color: var(--ink-3); font-size: 12px; }
+.ev { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; cursor: pointer; text-align: left; border: 0; width: 100%; }
+.ev .bar-c { width: 5px; align-self: stretch; border-radius: 4px; flex: none; }
+.ev .t { flex: 1; min-width: 0; word-break: break-word; }
+.ev .t b { display: block; font-size: 14px; font-weight: 600; }
+.ev .t small { color: var(--ink-2); font-size: 12px; }
+.ev.hol { cursor: default; }
+.empty { color: var(--ink-3); font-size: 13px; }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.tool { border: 0; cursor: pointer; aspect-ratio: 1; max-width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 18px; font-size: 11px; color: var(--ink-2); padding: 0; }
+.tool span { font-size: 22px; color: var(--ink); line-height: 1; }
+.count { display: flex; align-items: baseline; gap: 8px; }
+.count b { font-size: 34px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+/* Sheet — grows from the element that opened it, like an app launching from its icon */
+.sheet-wrap { position: fixed; inset: 0; z-index: 50; }
+.sheet-veil { position: absolute; inset: 0; background: rgba(0,0,0,.18); opacity: 0; transition: opacity .4s; }
+.sheet-wrap.open .sheet-veil { opacity: 1; }
+.sheet { position: absolute; left: 0; right: 0; margin-inline: auto; top: calc(env(safe-area-inset-top, 0px) + 18px);
+  width: min(460px, calc(100% - 2 * max(14px, env(safe-area-inset-left, 0px))));
+  max-height: calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 36px);
+  transform-origin: 0 0; overflow: hidden; display: flex; flex-direction: column;
+  background: var(--sheet); }
+.sheet { -webkit-backdrop-filter: blur(30px) saturate(180%) brightness(1.08); backdrop-filter: blur(30px) saturate(180%) brightness(1.08); }
+.sheet .inner { overflow-y: auto; padding: 20px 18px 22px; display: flex; flex-direction: column; gap: 14px;
+  transition: opacity .3s .08s, filter .35s .06s; }
+.sheet.fresh .inner { opacity: 0; }
+.sheet h3 { margin: 0; font-size: 20px; font-weight: 600; flex: 1; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-size: 12px; color: var(--ink-2); font-weight: 600; letter-spacing: .03em; }
+.in { font: inherit; color: var(--ink); border: 0; outline: 0; width: 100%; min-width: 0;
+  background: rgba(255,255,255,.10); border-radius: 12px; padding: 13px 16px; box-shadow: inset 0 0 0 1.2px rgba(255,255,255,.25); }
+.in:focus { box-shadow: inset 0 0 0 1.6px rgba(255,255,255,.75); }
+.in::placeholder { color: var(--ink-3); }
+select.in option { background: #2b2629; color: #fff; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.colors { display: flex; gap: 10px; flex-wrap: wrap; }
+.colors button { width: 34px; height: 34px; border-radius: 10px; border: 0; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.colors button.on { box-shadow: 0 0 0 3px #fff; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.acts { display: flex; gap: 10px; }
+.acts .btn { flex: 1; height: 50px; }
+.btn.danger { color: #ff8b7e; }
+.hours { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hours div { padding: 8px 6px; border-radius: 10px; background: rgba(255,255,255,.08); text-align: center; font-size: 12px; }
+.hours div b { display: block; font-size: 13px; }
+.hours div.good { background: rgba(123,224,166,.18); box-shadow: inset 0 0 0 1px rgba(123,224,166,.45); }
+.result { padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.10); font-size: 15px; }
+.result b { color: var(--moon); }
+.list-scroll { display: flex; flex-direction: column; gap: 8px; }
+.dayhead { font-size: 12px; color: var(--ink-2); font-weight: 600; padding: 8px 4px 0; letter-spacing: .03em; }
+.foot { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.upload { position: relative; overflow: hidden; height: 52px; width: 100%; }
+.upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; font-size: 0; }
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pre { border: 0; cursor: pointer; aspect-ratio: 3 / 4; max-width: 100%; border-radius: 14px; display: flex; align-items: flex-end; justify-content: center; padding: 8px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25); transition: transform .35s var(--spring); }
+.pre span { font-size: 12px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.pre.on { box-shadow: 0 0 0 3px #fff; }
+.months { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mo { border: 0; cursor: pointer; padding: 14px 0; border-radius: 12px; background: rgba(255,255,255,.10); font-weight: 600; font-size: 14px; transition: transform .35s var(--spring); }
+.mo.on { background: var(--solid); color: var(--solid-ink); }
+.pre:active, .mo:active { transform: scale(.92); transition-duration: .12s; }
+.foot label { cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
+  padding: 12px 20px; font-size: 14px; font-weight: 600; opacity: 0; transition: all .4s var(--spring); z-index: 80; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* White parts are frosted glass too: translucent fill, bright rim, inner shine */
+.btn.solid, .day.today, .chip, .seg button.on, .mo.on, .upload {
+  box-shadow: inset 1.5px 1.5px 0 #fff, inset -1px -1px 0 rgba(255,255,255,.7), inset 0 0 14px rgba(255,255,255,.55), 0 6px 16px rgba(0,0,0,.22);
+}
+.hours div, .result, .in, .mo, .ev .x {
+  box-shadow: inset 1.2px 1.2px 0 rgba(255,255,255,.4), inset -1px -1px 0 rgba(255,255,255,.18);
+}
+.in:focus { box-shadow: inset 0 0 0 1.6px rgba(255,255,255,.8); }
+.hours div.good { box-shadow: inset 1.2px 1.2px 0 rgba(160,255,200,.6), inset 0 0 0 1px rgba(123,224,166,.45); }
+/* Touch feedback: sink + brighten, light ripple from the finger, spring back */
+.btn, .day, .ev, .seg button, .tool, .mo, .pre, .upload, .wk { position: relative; overflow: hidden; }
+.pressed { transform: scale(.88) !important; filter: brightness(1.3); transition: transform .12s ease-out, filter .12s !important; }
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; z-index: 2;
+  background: radial-gradient(circle, rgba(255,255,255,.6) 0%, rgba(255,255,255,.18) 45%, rgba(255,255,255,0) 70%);
+  transform: translate(-50%, -50%) scale(0); animation: rip .6s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes rip { 60% { opacity: 1; } to { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+.day.selected { animation: pop .45s var(--spring); }
+@keyframes pop { from { transform: scale(.8); } }
+.top .seg { width: 200px; }
+.top .sub, .top .right { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet .inner > * { flex-shrink: 0; }
+.seg button { font-size: 12px; }
+.day.jp .sn { color: var(--sun); }
+.day .hd { position: absolute; top: 5px; right: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--good); opacity: .9; }
+.day.today .hd { background: #2f9e62; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; margin-left: 6px; vertical-align: 1px; }
+.tag.good { background: rgba(123,224,166,.2); color: var(--good); }
+.tag.bad { background: rgba(255,139,126,.16); color: var(--sun); }
+.wk { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 0; width: 100%; text-align: left; cursor: pointer; }
+.wk .chip { width: 50px; height: 54px; }
+.wk .chip b { font-size: 21px; }
+.wk .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wk .line { font-size: 13px; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.wk .line i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.wk .line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk.is-today { box-shadow: inset 0 0 0 1.6px rgba(255,255,255,.8), 0 6px 16px rgba(0,0,0,.18); }
+.sw { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.08); font-size: 14px; }
+.sw small { display: block; color: var(--ink-3); font-size: 12px; }
+.sw input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 46px; height: 28px; border-radius: 14px; background: rgba(255,255,255,.22); position: relative; flex: none; transition: background .25s; cursor: pointer; }
+.sw input[type="checkbox"]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); transition: transform .35s var(--spring); }
+.sw input[type="checkbox"]:checked { background: #4caf7a; }
+.sw input[type="checkbox"]:checked::after { transform: translateX(18px); }
+.sw input[type="time"] { width: auto; padding: 8px 10px; }
+textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
+.note { font-size: 12px; color: var(--ink-3); }
+.ver { text-align: center; font-size: 12px; color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation: none !important; transition-duration: .01s !important; }
+}
+</style>
+</head>
+<body>
+<div class="wall blobs" id="wall"></div>
+<div class="shade"></div>
+
+<div class="wrap" id="main">
+  <div class="top">
+    <div style="min-width:0"><div class="sub" id="todayline"></div><div class="right" id="lunarline"></div></div>
+    <div class="glass round seg" role="tablist">
+      <button id="tab-month" class="on" role="tab">Tháng</button>
+      <button id="tab-week" role="tab">Tuần</button>
+      <button id="tab-agenda" role="tab">Lịch trình</button>
+    </div>
+  </div>
+
+  <div id="view-month" style="display:flex;flex-direction:column;gap:14px">
+    <div class="glass bar">
+      <button class="btn glass round" id="prev" aria-label="Tháng trước">‹</button>
+      <h1 id="title" title="Bấm để chọn tháng, năm"></h1>
+      <button class="btn glass round" id="next" aria-label="Tháng sau">›</button>
+    </div>
+    <section class="glass month" aria-label="Lịch tháng">
+      <div class="dow"><div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div></div>
+      <div class="days" id="days"></div>
+    </section>
+    <section class="glass panel" id="daypanel"></section>
+  </div>
+
+  <div id="view-week" style="display:none;flex-direction:column;gap:14px">
+    <div class="glass bar">
+      <button class="btn glass round" id="wprev" aria-label="Tuần trước">‹</button>
+      <h1 id="wtitle"></h1>
+      <button class="btn glass round" id="wnext" aria-label="Tuần sau">›</button>
+    </div>
+    <div class="list-scroll" id="week"></div>
+  </div>
+
+  <div id="view-agenda" style="display:none;flex-direction:column;gap:14px">
+    <section class="glass panel">
+      <input class="in" id="search" type="search" placeholder="Tìm sự kiện..." autocomplete="off">
+      <div class="list-scroll" id="agenda"></div>
+    </section>
+  </div>
+
+  <section class="glass panel">
+    <div class="tools">
+      <button class="tool glass" id="t-add"><span>＋</span>Thêm</button>
+      <button class="tool glass" id="t-conv"><span>⇄</span>Đổi ngày</button>
+      <button class="tool glass" id="t-today"><span>◎</span>Hôm nay</button>
+      <button class="tool glass" id="t-set"><span>⚙</span>Cài đặt</button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div><div class="meta">Còn đến Tết <span id="tet-name"></span></div><div class="count"><b id="tet-days">--</b><span class="meta">ngày</span></div></div>
+      <div class="meta2" id="tet-date" style="text-align:right"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast glass round" id="toast"></div>
+
+<script>
+/* ===== Âm lịch Việt Nam (UTC+7) ===== */
+const PI = Math.PI, TZ = 7;
+function jdFromDate(d, m, y) { const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045; }
+function jdToDate(jd) { let b, c; if (jd > 2299160) { const a = jd + 32044; b = Math.floor((4 * a + 3) / 146097); c = a - Math.floor(b * 146097 / 4); } else { b = 0; c = jd + 32082; }
+  const d = Math.floor((4 * c + 3) / 1461), e = c - Math.floor(1461 * d / 4), m = Math.floor((5 * e + 2) / 153);
+  return new Date(b * 100 + d - 4800 + Math.floor(m / 10), m + 3 - 12 * Math.floor(m / 10) - 1, e - Math.floor((153 * m + 2) / 5) + 1); }
+function newMoonDay(k) { const T = k / 1236.85, T2 = T * T, T3 = T2 * T, dr = PI / 180;
+  const Jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3 + 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
+  const M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3, Mp = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3, F = 21.2964 - 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
+  const C1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M) - 0.4068 * Math.sin(Mp * dr) + 0.0161 * Math.sin(2 * dr * Mp) - 0.0004 * Math.sin(3 * dr * Mp)
+    + 0.0104 * Math.sin(2 * dr * F) - 0.0051 * Math.sin(dr * (M + Mp)) - 0.0074 * Math.sin(dr * (M - Mp)) + 0.0004 * Math.sin(dr * (2 * F + M))
+    - 0.0004 * Math.sin(dr * (2 * F - M)) - 0.0006 * Math.sin(dr * (2 * F + Mp)) + 0.0010 * Math.sin(dr * (2 * F - Mp)) + 0.0005 * Math.sin(dr * (2 * Mp + M));
+  const dt = T < -11 ? 0.001 + 0.000839 * T + 0.0002261 * T2 : -0.000278 + 0.000265 * T + 0.000262 * T2;
+  return Math.floor(Jd1 + C1 - dt + 0.5 + TZ / 24); }
+function sunLong(jdn) { const T = (jdn - 2451545.5 - TZ / 24) / 36525, T2 = T * T, dr = PI / 180;
+  const M = 357.5291 + 35999.0503 * T - 0.0001559 * T2 - 0.00000048 * T2 * T, L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T2;
+  const DL = (1.9146 - 0.004817 * T - 0.000014 * T2) * Math.sin(dr * M) + (0.019993 - 0.000101 * T) * Math.sin(dr * 2 * M) + 0.00029 * Math.sin(dr * 3 * M);
+  let L = (L0 + DL) * dr; L -= PI * 2 * Math.floor(L / (PI * 2)); return L; }
+const sunSeg = j => Math.floor(sunLong(j) / PI * 6);
+function month11(y) { const k = Math.floor((jdFromDate(31, 12, y) - 2415021) / 29.530588853); let nm = newMoonDay(k); if (sunSeg(nm) >= 9) nm = newMoonDay(k - 1); return nm; }
+function leapOffset(a11) { const k = Math.floor((a11 - 2415021.076998695) / 29.530588853 + 0.5); let i = 1, last, arc = sunSeg(newMoonDay(k + i));
+  do { last = arc; i++; arc = sunSeg(newMoonDay(k + i)); } while (arc !== last && i < 14); return i - 1; }
+const LCACHE = new Map();
+function toLunar(d, m, y) { const key = y * 10000 + m * 100 + d; if (LCACHE.has(key)) return LCACHE.get(key);
+  const dn = jdFromDate(d, m, y), k = Math.floor((dn - 2415021.076998695) / 29.530588853);
+  let ms = newMoonDay(k + 1); if (ms > dn) ms = newMoonDay(k);
+  let a11 = month11(y), b11 = a11, ly; if (a11 >= ms) { ly = y; a11 = month11(y - 1); } else { ly = y + 1; b11 = month11(y + 1); }
+  const day = dn - ms + 1, diff = Math.floor((ms - a11) / 29); let leap = 0, lm = diff + 11;
+  if (b11 - a11 > 365) { const lo = leapOffset(a11); if (diff >= lo) { lm = diff + 10; if (diff === lo) leap = 1; } }
+  if (lm > 12) lm -= 12; if (lm >= 11 && diff < 4) ly -= 1;
+  const r = { day, month: lm, year: ly, leap }; LCACHE.set(key, r); return r; }
+function toSolar(ld, lm, ly, leap) { let a11, b11; if (lm < 11) { a11 = month11(ly - 1); b11 = month11(ly); } else { a11 = month11(ly); b11 = month11(ly + 1); }
+  const k = Math.floor(0.5 + (a11 - 2415021.076998695) / 29.530588853); let off = lm - 11; if (off < 0) off += 12;
+  if (b11 - a11 > 365) { const lo = leapOffset(a11); let lmn = lo - 2; if (lmn < 0) lmn += 12; if (leap && lm !== lmn) return null; if (leap || off >= lo) off += 1; }
+  else if (leap) return null;
+  return jdToDate(newMoonDay(k + off) + ld - 1); }
+
+const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+const yearName = y => `${CAN[(y + 6) % 10]} ${CHI[(y + 8) % 12]}`;
+const jdOf = d => jdFromDate(d.getDate(), d.getMonth() + 1, d.getFullYear());
+const dayName = d => { const j = jdOf(d); return `${CAN[(j + 9) % 10]} ${CHI[(j + 1) % 12]}`; };
+const monthName = lu => `${CAN[(lu.year * 12 + lu.month + 3) % 10]} ${CHI[(lu.month + 1) % 12]}`;
+const TIET = ['Xuân phân','Thanh minh','Cốc vũ','Lập hạ','Tiểu mãn','Mang chủng','Hạ chí','Tiểu thử','Đại thử','Lập thu','Xử thử','Bạch lộ','Thu phân','Hàn lộ','Sương giáng','Lập đông','Tiểu tuyết','Đại tuyết','Đông chí','Tiểu hàn','Đại hàn','Lập xuân','Vũ thủy','Kinh trập'];
+const tietKhi = d => TIET[Math.floor(sunLong(jdOf(d) + 1) / PI * 12)];
+const GIO_HD = ['110100101100','001101001011','110011010010','101100110100','001011001101','010010110011'];
+function gioHoangDao(d) { const chi = (jdOf(d) + 1) % 12, p = GIO_HD[chi % 6], out = [];
+  for (let i = 0; i < 12; i++) { const s = (i * 2 + 23) % 24, e = (i * 2 + 1) % 24; out.push({ name: CHI[i], from: s, to: e, good: p[i] === '1' }); } return out; }
+
+const SOLAR_HOL = { '1-1':'Tết Dương lịch','14-2':'Lễ Tình nhân','8-3':'Quốc tế Phụ nữ','30-4':'Giải phóng miền Nam','1-5':'Quốc tế Lao động','1-6':'Quốc tế Thiếu nhi','2-9':'Quốc khánh','20-10':'Phụ nữ Việt Nam','20-11':'Nhà giáo Việt Nam','24-12':'Đêm Giáng sinh','25-12':'Giáng sinh' };
+const LUNAR_HOL = { '1-1':'Tết Nguyên Đán','2-1':'Mùng 2 Tết','3-1':'Mùng 3 Tết','15-1':'Rằm tháng Giêng','3-3':'Tết Hàn thực','10-3':'Giỗ Tổ Hùng Vương','15-4':'Phật Đản','5-5':'Tết Đoan Ngọ','15-7':'Vu Lan','15-8':'Tết Trung Thu','23-12':'Ông Công Ông Táo' };
+
+/* ===== Dữ liệu ===== */
+const DOW = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'], DOW_S = ['CN','T2','T3','T4','T5','T6','T7'];
+const COLORS = ['#5b9bff','#ff7a8a','#7be0a6','#ffc65c','#b88cff','#5fd3e6'];
+const REMIND = { '-1': 'Không nhắc', '0': 'Đúng giờ', '10': 'Trước 10 phút', '30': 'Trước 30 phút', '60': 'Trước 1 giờ', '1440': 'Trước 1 ngày' };
+const REPEAT = { none:'Không lặp', daily:'Hằng ngày', weekly:'Hằng tuần', monthly:'Hằng tháng (dương)', yearly:'Hằng năm (dương)', lmonthly:'Hằng tháng (âm)', lyearly:'Hằng năm (âm) – giỗ, sinh nhật âm' };
+const keyOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const strip = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+function load(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+const NATIVE = typeof window.Native !== 'undefined';
+let S = Object.assign({ vn: true, jp: true, haptic: true, allDayAt: '07:00', defRemind: 0 }, load('lichSettings', {}));
+const saveS = () => save('lichSettings', S);
+
+let events = load('lichEvents2', null);
+if (!Array.isArray(events)) { // chuyển dữ liệu cũ
+  events = []; const old = load('lichEvents', {});
+  Object.keys(old).forEach(k => (old[k] || []).forEach(t => { const [y, m, d] = k.split('-').map(Number); events.push(mkEvent({ title: t, start: keyOf(new Date(y, m - 1, d)) })); }));
+  save('lichEvents2', events);
+}
+function mkEvent(o) { const d = fromKey(o.start), lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+  return Object.assign({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: '', start: '', time: '', note: '', color: COLORS[0], repeat: 'none', remind: -1, lday: lu.day, lmonth: lu.month }, o, { lday: lu.day, lmonth: lu.month }); }
+function occurs(ev, d) { const s = fromKey(ev.start); if (d < s) return false;
+  switch (ev.repeat) {
+    case 'daily': return true;
+    case 'weekly': return d.getDay() === s.getDay();
+    case 'monthly': return d.getDate() === s.getDate();
+    case 'yearly': return d.getDate() === s.getDate() && d.getMonth() === s.getMonth();
+    case 'lmonthly': { const l = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()); return l.day === ev.lday; }
+    case 'lyearly': { const l = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()); return !l.leap && l.day === ev.lday && l.month === ev.lmonth; }
+    default: return keyOf(d) === ev.start; } }
+const eventsOn = d => events.filter(e => occurs(e, d)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+/* Ngày lễ Nhật Bản (có nghỉ bù và ngày nghỉ quốc dân) */
+const JP_CACHE = {};
+function jpHolidays(y) { if (JP_CACHE[y]) return JP_CACHE[y]; const h = {}, key = dt => `${dt.getMonth() + 1}-${dt.getDate()}`;
+  const add = (m, d, n) => { h[`${m}-${d}`] = n; };
+  const nthMon = (m, n) => { const f = new Date(y, m - 1, 1).getDay(); return 1 + ((8 - f) % 7) + (n - 1) * 7; };
+  const eq = (base) => Math.floor(base + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4));
+  add(1, 1, 'Ngày đầu năm'); add(1, nthMon(1, 2), 'Ngày Thành nhân'); add(2, 11, 'Ngày Kiến quốc'); add(2, 23, 'Sinh nhật Thiên hoàng');
+  add(3, eq(20.8431), 'Ngày Xuân phân'); add(4, 29, 'Ngày Showa'); add(5, 3, 'Ngày Hiến pháp'); add(5, 4, 'Ngày Xanh'); add(5, 5, 'Ngày Thiếu nhi');
+  add(7, nthMon(7, 3), 'Ngày Biển'); add(8, 11, 'Ngày Núi'); add(9, nthMon(9, 3), 'Ngày Kính lão'); add(9, eq(23.2488), 'Ngày Thu phân');
+  add(10, nthMon(10, 2), 'Ngày Thể thao'); add(11, 3, 'Ngày Văn hóa'); add(11, 23, 'Ngày Cảm tạ lao động');
+  for (let t = new Date(y, 0, 2); t.getFullYear() === y; t.setDate(t.getDate() + 1)) {
+    if (h[key(t)] || t.getDay() === 0) continue; const a = new Date(t), b = new Date(t); a.setDate(a.getDate() - 1); b.setDate(b.getDate() + 1);
+    if (h[key(a)] && h[key(b)] && h[key(a)] !== 'Nghỉ bù') h[key(t)] = 'Ngày nghỉ quốc dân'; }
+  Object.keys(h).forEach(k => { const [m, d] = k.split('-').map(Number), t = new Date(y, m - 1, d); if (t.getDay() !== 0) return;
+    const n = new Date(t); do { n.setDate(n.getDate() + 1); } while (h[key(n)] && n.getFullYear() === y); if (n.getFullYear() === y) h[key(n)] = 'Nghỉ bù'; });
+  return (JP_CACHE[y] = h); }
+function holidaysOf(d) { const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()), out = [];
+  if (S.vn) {
+    const s = SOLAR_HOL[`${d.getDate()}-${d.getMonth() + 1}`]; if (s) out.push({ name: s, kind: 'vn' });
+    if (!lu.leap) { const l = LUNAR_HOL[`${lu.day}-${lu.month}`]; if (l) out.push({ name: l, kind: 'vn' }); }
+    if (!lu.leap && lu.month === 12) { const nx = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1), nl = toLunar(nx.getDate(), nx.getMonth() + 1, nx.getFullYear()); if (nl.day === 1 && nl.month === 1) out.push({ name: 'Giao thừa', kind: 'vn' }); } }
+  if (S.jp) { const j = jpHolidays(d.getFullYear())[`${d.getMonth() + 1}-${d.getDate()}`]; if (j) out.push({ name: j, kind: 'jp' }); }
+  return out; }
+/* Ngày hoàng đạo / hắc đạo theo 12 sao */
+const SAO = ['Thanh Long','Minh Đường','Thiên Hình','Chu Tước','Kim Quỹ','Kim Đường','Bạch Hổ','Ngọc Đường','Thiên Lao','Huyền Vũ','Tư Mệnh','Câu Trận'];
+const SAO_TOT = [1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0];
+function saoNgay(d) { const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()), chi = (jdOf(d) + 1) % 12, start = [0, 2, 4, 6, 8, 10][(lu.month - 1) % 6], i = (chi - start + 12) % 12;
+  return { name: SAO[i], good: !!SAO_TOT[i] }; }
+const saoTag = d => { const s = saoNgay(d); return `<span class="tag ${s.good ? 'good' : 'bad'}">${s.good ? 'Hoàng đạo' : 'Hắc đạo'} · ${s.name}</span>`; };
+
+let selected = strip(new Date()), view = new Date(selected.getFullYear(), selected.getMonth(), 1), tab = 'month';
+
+/* ===== Hiển thị ===== */
+function renderTop() { const n = new Date(), lu = toLunar(n.getDate(), n.getMonth() + 1, n.getFullYear());
+  $('todayline').textContent = `${DOW[n.getDay()]}, ${n.getDate()}/${n.getMonth() + 1}`;
+  $('lunarline').innerHTML = `<b>${lu.day}/${lu.month}</b> âm · ${yearName(lu.year)}`;
+  // đếm ngược Tết
+  let ty = lu.year + 1, tet = toSolar(1, 1, ty); if (strip(n) >= tet) { ty++; tet = toSolar(1, 1, ty); }
+  $('tet-days').textContent = Math.round((tet - strip(n)) / 864e5); $('tet-name').textContent = yearName(ty);
+  $('tet-date').innerHTML = `Mùng 1 Tết<br>${DOW[tet.getDay()]}, ${tet.getDate()}/${tet.getMonth() + 1}/${tet.getFullYear()}`; }
+
+function renderMonth(dir) { const y = view.getFullYear(), m = view.getMonth(), mid = toLunar(15, m + 1, y);
+  $('title').innerHTML = `Tháng ${m + 1}, ${y} ▾<small>Năm ${yearName(mid.year)}</small>`;
+  const off = (new Date(y, m, 1).getDay() + 6) % 7, tk = keyOf(new Date()), sk = keyOf(selected), days = $('days');
+  const build = () => { days.innerHTML = '';
+    for (let i = 0; i < 42; i++) { const d = new Date(y, m, 1 - off + i);
+      const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()), hols = holidaysOf(d), hol = hols.length, evs = eventsOn(d);
+      const c = document.createElement('button'); c.className = 'day'; c.dataset.key = keyOf(d);
+      if (d.getMonth() !== m) c.classList.add('other'); if (d.getDay() === 0) c.classList.add('sun'); if (hols.some(h => h.kind === 'jp')) c.classList.add('jp');
+      if (keyOf(d) === tk) c.classList.add('today'); if (keyOf(d) === sk) c.classList.add('selected');
+      const hi = lu.day === 1 || lu.day === 15 || hols.some(h => h.kind === 'vn');
+      c.innerHTML = `<span class="sn">${d.getDate()}</span><span class="ln${hi ? ' hi' : ''}">${lu.day === 1 ? `${lu.day}/${lu.month}${lu.leap ? 'N' : ''}` : lu.day}</span>` +
+        (saoNgay(d).good ? '<span class="hd"></span>' : '') + (evs.length ? `<span class="dots">${evs.slice(0, 3).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>` : '');
+      c.setAttribute('aria-label', `${d.getDate()} tháng ${d.getMonth() + 1}, âm lịch ${lu.day}/${lu.month}`);
+      c.onclick = () => { if (keyOf(d) === keyOf(selected)) { openDay(d, c); return; }
+        selected = d; if (d.getMonth() !== m) { go(d < view ? -1 : 1, d); return; } days.querySelectorAll('.day.selected').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); renderDayPanel(); };
+      days.appendChild(c); } };
+  if (dir) { days.className = 'days ' + (dir > 0 ? 'out-l' : 'out-r');
+    setTimeout(() => { build(); days.className = 'days ' + (dir > 0 ? 'in-l' : 'in-r'); }, 170); }
+  else build(); }
+
+function evRow(e, d, clickable = true) { const b = document.createElement(clickable ? 'button' : 'div'); b.className = 'ev glass';
+  b.innerHTML = `<span class="bar-c" style="background:${e.color}"></span><span class="t"><b>${esc(e.title)}</b><small>${e.time ? e.time : 'Cả ngày'}${e.repeat !== 'none' ? ' · ' + REPEAT[e.repeat].split(' –')[0] : ''}${e.remind >= 0 ? ' · có nhắc' : ''}${e.note ? ' · ' + esc(e.note) : ''}</small></span>`;
+  if (clickable) b.onclick = () => openEditor(e, d, b); return b; }
+function holRow(h) { const r = document.createElement('div'); r.className = 'ev glass hol'; const col = h.kind === 'jp' ? 'var(--sun)' : 'var(--moon)';
+  r.innerHTML = `<span class="bar-c" style="background:${col}"></span><span class="t"><b style="color:${col}">${esc(h.name)}</b><small>${h.kind === 'jp' ? 'Ngày lễ Nhật Bản' : 'Ngày lễ Việt Nam'}</small></span>`; return r; }
+
+function renderDayPanel() { const d = selected, lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()), p = $('daypanel');
+  p.innerHTML = `<div class="row"><div class="chip"><span>${DOW_S[d.getDay()]}</span><b>${d.getDate()}</b></div>
+    <div style="min-width:0;flex:1"><h2>${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}</h2>
+    <div class="meta">Âm lịch ${lu.day}/${lu.month}${lu.leap ? ' (nhuận)' : ''} · Năm ${yearName(lu.year)}</div>
+    <div class="meta2">Ngày ${dayName(d)} · Tháng ${monthName(lu)} · ${tietKhi(d)}</div><div style="margin-top:4px;margin-left:-6px">${saoTag(d)}</div></div>
+    <button class="btn glass round" id="dp-open" aria-label="Xem chi tiết ngày">⤢</button></div>`;
+  const list = document.createElement('div'); list.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+  holidaysOf(d).forEach(h => list.appendChild(holRow(h))); eventsOn(d).forEach(e => list.appendChild(evRow(e, d)));
+  if (!list.children.length) list.innerHTML = '<div class="empty">Chưa có sự kiện. Bấm "Thêm" để tạo, bấm lại vào ngày để xem chi tiết.</div>';
+  p.appendChild(list); $('dp-open').onclick = ev => openDay(d, ev.currentTarget); }
+
+function renderAgenda() { const q = $('search').value.trim().toLowerCase(), box = $('agenda'); box.innerHTML = '';
+  const start = strip(new Date()); let shown = 0;
+  for (let i = 0; i < 120 && shown < 60; i++) { const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const hol = holidaysOf(d).filter(h => !q || h.name.toLowerCase().includes(q)), evs = eventsOn(d).filter(e => !q || (e.title + ' ' + e.note).toLowerCase().includes(q));
+    if (!hol.length && !evs.length) continue; const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+    const h = document.createElement('div'); h.className = 'dayhead'; h.textContent = `${i === 0 ? 'HÔM NAY · ' : i === 1 ? 'NGÀY MAI · ' : ''}${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1} · Âm ${lu.day}/${lu.month}`;
+    box.appendChild(h); hol.forEach(x => box.appendChild(holRow(x))); evs.forEach(e => box.appendChild(evRow(e, d))); shown += hol.length + evs.length; }
+  if (!box.children.length) box.innerHTML = `<div class="empty">${q ? 'Không tìm thấy sự kiện nào.' : 'Không có sự kiện trong 4 tháng tới.'}</div>`; }
+
+function renderAll() { renderTop(); renderMonth(); renderDayPanel(); if (tab === 'agenda') renderAgenda(); if (tab === 'week') renderWeek(); }
+function go(dir, sel) { view = new Date(view.getFullYear(), view.getMonth() + dir, 1); if (sel) selected = sel; renderMonth(dir); renderDayPanel(); }
+
+/* ===== Sheet: phóng ra từ phần tử được bấm, đóng thì thu về ===== */
+let openSheet = null;
+function sheet(originEl, html, onReady) {
+  closeSheet(true);
+  const wrap = document.createElement('div'); wrap.className = 'sheet-wrap';
+  wrap.innerHTML = `<div class="sheet-veil"></div><div class="sheet glass fresh"><div class="inner">${html}</div></div>`;
+  document.body.appendChild(wrap); const s = wrap.querySelector('.sheet');
+  const final = s.getBoundingClientRect();
+  const o = originEl && originEl.isConnected ? originEl.getBoundingClientRect() : { left: final.left + final.width / 2 - 30, top: final.top + 60, width: 60, height: 60 };
+  const from = `translate(${o.left - final.left}px, ${o.top - final.top}px) scale(${o.width / final.width}, ${o.height / final.height})`;
+  s.style.transform = from; s.style.borderRadius = '40px'; s.style.opacity = '.4';
+  $('main').classList.add('behind'); s.getBoundingClientRect();
+  requestAnimationFrame(() => { wrap.classList.add('open');
+    s.style.transition = 'transform .5s var(--spring), border-radius .5s var(--ease), opacity .25s';
+    s.style.transform = 'none'; s.style.borderRadius = '22px'; s.style.opacity = '1';
+    setTimeout(() => s.classList.remove('fresh'), 90); });
+  openSheet = { wrap, s, originEl };
+  wrap.querySelector('.sheet-veil').onclick = () => closeSheet();
+  wrap.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeSheet());
+  if (onReady) onReady(s);
+  return s; }
+function closeSheet(instant) { if (!openSheet) return; const { wrap, s, originEl } = openSheet; openSheet = null;
+  $('main').classList.remove('behind');
+  if (instant) { wrap.remove(); return; }
+  const f = s.getBoundingClientRect(), o = originEl && originEl.isConnected ? originEl.getBoundingClientRect() : { left: f.left + f.width / 2 - 30, top: f.top + 80, width: 60, height: 60 };
+  s.classList.add('fresh'); wrap.classList.remove('open');
+  s.style.transition = 'transform .42s cubic-bezier(.3,.9,.3,1), border-radius .42s, opacity .35s .1s';
+  s.style.transform = `translate(${o.left - f.left}px, ${o.top - f.top}px) scale(${o.width / f.width}, ${o.height / f.height})`;
+  s.style.borderRadius = '40px'; s.style.opacity = '0';
+  setTimeout(() => wrap.remove(), 450); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
+
+/* Chi tiết ngày */
+function openDay(d, origin) { const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+  const hrs = gioHoangDao(d).map(h => `<div class="${h.good ? 'good' : ''}"><b>${h.name}</b>${String(h.from).padStart(2, '0')}–${String(h.to).padStart(2, '0')}h</div>`).join('');
+  sheet(origin, `<div class="row"><div class="chip"><span>${DOW_S[d.getDay()]}</span><b>${d.getDate()}</b></div>
+      <div style="flex:1;min-width:0"><h3>${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}</h3>
+      <div class="meta">Âm lịch ${lu.day}/${lu.month}${lu.leap ? ' (nhuận)' : ''} · Năm ${yearName(lu.year)}</div></div>
+      <button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="result">Ngày <b>${dayName(d)}</b> · Tháng <b>${monthName(lu)}</b> · Tiết <b>${tietKhi(d)}</b><div style="margin-top:6px;margin-left:-6px">${saoTag(d)}</div></div>
+    <div class="field"><label>GIỜ HOÀNG ĐẠO (ô xanh là giờ tốt)</label><div class="hours">${hrs}</div></div>
+    <div class="field"><label>SỰ KIỆN</label><div class="list-scroll" id="sd-list"></div></div>
+    <div class="acts"><button class="btn solid round" id="sd-add">Thêm sự kiện</button></div>`, s => {
+      const l = s.querySelector('#sd-list'); holidaysOf(d).forEach(h => l.appendChild(holRow(h))); eventsOn(d).forEach(e => l.appendChild(evRow(e, d)));
+      if (!l.children.length) l.innerHTML = '<div class="empty">Chưa có sự kiện.</div>';
+      s.querySelector('#sd-add').onclick = ev => openEditor(null, d, ev.currentTarget); }); }
+
+/* Thêm / sửa sự kiện */
+function openEditor(ev, d, origin) { const isNew = !ev; ev = ev || { title: '', start: keyOf(d), time: '', note: '', color: COLORS[0], repeat: 'none', remind: S.defRemind };
+  const rem = ev.remind == null ? -1 : ev.remind;
+  const lu = toLunar(fromKey(ev.start).getDate(), fromKey(ev.start).getMonth() + 1, fromKey(ev.start).getFullYear());
+  sheet(origin, `<div class="row"><h3>${isNew ? 'Sự kiện mới' : 'Sửa sự kiện'}</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="field"><label for="f-title">TÊN</label><input class="in" id="f-title" placeholder="Ví dụ: Giỗ ông nội" value="${esc(ev.title)}"></div>
+    <div class="two"><div class="field"><label for="f-date">NGÀY</label><input class="in" type="date" id="f-date" value="${ev.start}"></div>
+      <div class="field"><label for="f-time">GIỜ</label><input class="in" type="time" id="f-time" value="${ev.time}"></div></div>
+    <div class="meta2" id="f-lunar">Âm lịch: ${lu.day}/${lu.month}${lu.leap ? ' (nhuận)' : ''} năm ${yearName(lu.year)}</div>
+    <div class="field"><label for="f-repeat">LẶP LẠI</label><select class="in" id="f-repeat">${Object.keys(REPEAT).map(k => `<option value="${k}"${k === ev.repeat ? ' selected' : ''}>${REPEAT[k]}</option>`).join('')}</select></div>
+    <div class="field"><label for="f-remind">NHẮC VIỆC</label><select class="in" id="f-remind">${Object.keys(REMIND).sort((a, b) => a - b).map(k => `<option value="${k}"${+k === rem ? ' selected' : ''}>${REMIND[k]}</option>`).join('')}</select>
+      <div class="note">${NATIVE ? `Sự kiện cả ngày sẽ nhắc lúc ${S.allDayAt} (đổi trong Cài đặt).` : 'Thông báo nhắc việc chỉ chạy trong app Lịch Nhanh trên điện thoại.'}</div></div>
+    <div class="field"><label>MÀU</label><div class="colors" id="f-colors">${COLORS.map(c => `<button type="button" data-c="${c}" class="${c === ev.color ? 'on' : ''}" style="background:${c}" aria-label="Màu"></button>`).join('')}</div></div>
+    <div class="field"><label for="f-note">GHI CHÚ</label><input class="in" id="f-note" placeholder="Địa điểm, nội dung..." value="${esc(ev.note)}"></div>
+    <div class="acts">${isNew ? '' : '<button class="btn glass round danger" id="f-del">Xóa</button>'}<button class="btn solid round" id="f-save">Lưu</button></div>`, s => {
+      let color = ev.color;
+      s.querySelectorAll('#f-colors button').forEach(b => b.onclick = () => { color = b.dataset.c; s.querySelectorAll('#f-colors button').forEach(x => x.classList.toggle('on', x === b)); });
+      s.querySelector('#f-date').oninput = e => { if (!e.target.value) return; const dd = fromKey(e.target.value), l = toLunar(dd.getDate(), dd.getMonth() + 1, dd.getFullYear());
+        s.querySelector('#f-lunar').textContent = `Âm lịch: ${l.day}/${l.month}${l.leap ? ' (nhuận)' : ''} năm ${yearName(l.year)}`; };
+      s.querySelector('#f-save').onclick = () => { const title = s.querySelector('#f-title').value.trim(), start = s.querySelector('#f-date').value;
+        if (!title) { s.querySelector('#f-title').focus(); toast('Nhập tên sự kiện'); return; } if (!start) { toast('Chọn ngày'); return; }
+        const data = { title, start, time: s.querySelector('#f-time').value, note: s.querySelector('#f-note').value.trim(), color, repeat: s.querySelector('#f-repeat').value, remind: +s.querySelector('#f-remind').value };
+        if (isNew) events.push(mkEvent(data)); else { const i = events.findIndex(x => x.id === ev.id); events[i] = mkEvent(Object.assign({ id: ev.id }, data)); }
+        const ok = save('lichEvents2', events); closeSheet(); renderAll(); syncReminders(data.remind >= 0); toast(ok ? 'Đã lưu' : 'Đã lưu tạm (trình duyệt không cho lưu lâu dài)'); };
+      const del = s.querySelector('#f-del'); if (del) { let armed = false; del.onclick = () => {
+        if (!armed) { armed = true; del.textContent = 'Bấm lần nữa để xóa'; return; }
+        events = events.filter(x => x.id !== ev.id); save('lichEvents2', events); closeSheet(); renderAll(); syncReminders(); toast('Đã xóa'); }; }
+      if (isNew) setTimeout(() => s.querySelector('#f-title').focus(), 450); }); }
+
+/* Đổi ngày âm ↔ dương */
+function openConvert(origin) { const t = selected, lu = toLunar(t.getDate(), t.getMonth() + 1, t.getFullYear());
+  sheet(origin, `<div class="row"><h3>Đổi ngày âm – dương</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="field"><label for="c-solar">DƯƠNG LỊCH → ÂM LỊCH</label><input class="in" type="date" id="c-solar" value="${keyOf(t)}"></div>
+    <div class="result" id="c-r1"></div>
+    <div class="field"><label>ÂM LỊCH → DƯƠNG LỊCH</label><div class="two">
+      <input class="in" id="c-ld" type="number" min="1" max="30" value="${lu.day}" aria-label="Ngày âm">
+      <input class="in" id="c-lm" type="number" min="1" max="12" value="${lu.month}" aria-label="Tháng âm"></div>
+      <input class="in" id="c-ly" type="number" min="1900" max="2199" value="${lu.year}" aria-label="Năm âm">
+      <label class="check"><input type="checkbox" id="c-leap"> Tháng nhuận</label></div>
+    <div class="result" id="c-r2"></div>`, s => {
+      const r1 = () => { const v = s.querySelector('#c-solar').value; if (!v) return; const d = fromKey(v), l = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+        s.querySelector('#c-r1').innerHTML = `Âm lịch: <b>${l.day}/${l.month}${l.leap ? ' nhuận' : ''}</b> năm <b>${yearName(l.year)}</b> (${l.year})<br><span class="meta2">Ngày ${dayName(d)} · ${tietKhi(d)}</span>`; };
+      const r2 = () => { const ld = +s.querySelector('#c-ld').value, lm = +s.querySelector('#c-lm').value, ly = +s.querySelector('#c-ly').value, lp = s.querySelector('#c-leap').checked;
+        if (!(ld >= 1 && ld <= 30 && lm >= 1 && lm <= 12 && ly >= 1900 && ly <= 2199)) { s.querySelector('#c-r2').textContent = 'Nhập ngày 1–30, tháng 1–12, năm 1900–2199.'; return; }
+        const d = toSolar(ld, lm, ly, lp ? 1 : 0); if (!d) { s.querySelector('#c-r2').textContent = `Năm ${ly} không có tháng ${lm} nhuận.`; return; }
+        const back = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+        if (back.day !== ld) { s.querySelector('#c-r2').textContent = `Tháng ${lm} âm năm ${ly} chỉ có 29 ngày.`; return; }
+        s.querySelector('#c-r2').innerHTML = `Dương lịch: <b>${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}</b>`; };
+      s.querySelectorAll('input').forEach(i => i.addEventListener('input', () => { r1(); r2(); })); r1(); r2(); }); }
+
+/* Giờ tốt hôm nay */
+function openHours(origin) { openDay(selected, origin); }
+
+/* ===== Sự kiện giao diện ===== */
+$('prev').onclick = () => go(-1); $('next').onclick = () => go(1);
+function goToday() { const t = strip(new Date()); const dir = (t.getFullYear() - view.getFullYear()) * 12 + t.getMonth() - view.getMonth(); view = new Date(t.getFullYear(), t.getMonth(), 1); selected = t; renderMonth(Math.sign(dir)); renderDayPanel(); }
+$('t-today').onclick = () => { goToday(); if (tab === 'week') renderWeek(); };
+$('title').onclick = e => openPicker(e.currentTarget);
+function openPicker(origin) { let py = view.getFullYear();
+  const draw = s => { s.querySelector('#p-year').textContent = py; s.querySelector('#p-yname').textContent = 'Năm ' + yearName(py);
+    s.querySelector('#p-months').innerHTML = Array.from({ length: 12 }, (_, i) => `<button class="mo${py === view.getFullYear() && i === view.getMonth() ? ' on' : ''}" data-m="${i}">Tháng ${i + 1}</button>`).join('');
+    s.querySelectorAll('.mo').forEach(b => b.onclick = () => { const mm = +b.dataset.m, dir = Math.sign((py - view.getFullYear()) * 12 + mm - view.getMonth());
+      view = new Date(py, mm, 1); const t = new Date(); selected = (t.getFullYear() === py && t.getMonth() === mm) ? strip(t) : new Date(py, mm, 1);
+      closeSheet(); renderMonth(dir); renderDayPanel(); }); };
+  sheet(origin, `<div class="row"><h3>Chọn tháng, năm</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="row" style="justify-content:space-between"><button class="btn glass round" id="p-prev" aria-label="Năm trước">‹</button>
+      <div style="text-align:center"><div id="p-year" style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums"></div><div class="meta" id="p-yname"></div></div>
+      <button class="btn glass round" id="p-next" aria-label="Năm sau">›</button></div>
+    <input class="in" type="number" inputmode="numeric" id="p-input" min="1900" max="2199" placeholder="Gõ năm, ví dụ 1998" aria-label="Gõ năm">
+    <div class="months" id="p-months"></div>
+    <button class="btn glass round pill" id="p-today" style="width:100%">Về hôm nay</button>`, s => { draw(s);
+      s.querySelector('#p-prev').onclick = () => { if (py > 1900) { py--; draw(s); } };
+      s.querySelector('#p-next').onclick = () => { if (py < 2199) { py++; draw(s); } };
+      s.querySelector('#p-input').oninput = e => { const v = +e.target.value; if (v >= 1900 && v <= 2199) { py = v; draw(s); } };
+      s.querySelector('#p-today').onclick = () => { closeSheet(); goToday(); }; }); }
+$('t-add').onclick = e => openEditor(null, selected, e.currentTarget);
+$('t-conv').onclick = e => openConvert(e.currentTarget);
+$('t-set').onclick = e => openSettings(e.currentTarget);
+function setTab(t) { tab = t; ['month', 'week', 'agenda'].forEach(k => { $('tab-' + k).classList.toggle('on', k === t); if (k !== t) $('view-' + k).style.display = 'none'; });
+  const show = $('view-' + t); show.style.display = 'flex'; show.style.animation = 'none'; show.getBoundingClientRect(); show.style.animation = 'rise .5s var(--spring)';
+  if (t === 'agenda') renderAgenda(); if (t === 'week') renderWeek(); if (t === 'month') { renderMonth(); renderDayPanel(); } }
+$('tab-month').onclick = () => setTab('month'); $('tab-week').onclick = () => setTab('week'); $('tab-agenda').onclick = () => setTab('agenda');
+function weekStart(d) { const x = strip(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+function renderWeek(dir) { const st = weekStart(selected), en = new Date(st); en.setDate(en.getDate() + 6);
+  $('wtitle').innerHTML = `${st.getDate()}/${st.getMonth() + 1} – ${en.getDate()}/${en.getMonth() + 1}/${en.getFullYear()}<small>Tuần này có ${[0,1,2,3,4,5,6].reduce((n, i) => { const d = new Date(st); d.setDate(d.getDate() + i); return n + eventsOn(d).length; }, 0)} sự kiện</small>`;
+  const box = $('week'), tk = keyOf(new Date());
+  const build = () => { box.innerHTML = '';
+    for (let i = 0; i < 7; i++) { const d = new Date(st); d.setDate(d.getDate() + i); const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+      const b = document.createElement('button'); b.className = 'wk glass' + (keyOf(d) === tk ? ' is-today' : '');
+      const hols = holidaysOf(d), evs = eventsOn(d), red = d.getDay() === 0 || hols.some(h => h.kind === 'jp');
+      const lines = hols.map(h => `<div class="line"><i style="background:${h.kind === 'jp' ? 'var(--sun)' : 'var(--moon)'}"></i><span style="color:${h.kind === 'jp' ? 'var(--sun)' : 'var(--moon)'}">${esc(h.name)}</span></div>`).join('') +
+        evs.map(e => `<div class="line"><i style="background:${e.color}"></i><span><b>${e.time || 'Cả ngày'}</b> · ${esc(e.title)}</span></div>`).join('');
+      b.innerHTML = `<div class="chip"><span style="${red ? '' : 'color:#555'}">${DOW_S[d.getDay()]}</span><b>${d.getDate()}</b></div>
+        <div class="body"><div class="meta">Âm ${lu.day}/${lu.month}${lu.leap ? ' nhuận' : ''} · ${dayName(d)}${saoNgay(d).good ? ' · <span style="color:var(--good)">Hoàng đạo</span>' : ''}</div>${lines || '<div class="meta2">Không có sự kiện</div>'}</div>`;
+      b.onclick = () => openDay(d, b); box.appendChild(b); } };
+  if (dir) { box.style.animation = 'none'; box.getBoundingClientRect(); build(); box.style.animation = (dir > 0 ? 'inL' : 'inR') + ' .45s var(--spring)'; } else build(); }
+$('wprev').onclick = () => { selected = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() - 7); view = new Date(selected.getFullYear(), selected.getMonth(), 1); renderWeek(-1); };
+$('wnext').onclick = () => { selected = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate() + 7); view = new Date(selected.getFullYear(), selected.getMonth(), 1); renderWeek(1); };
+$('search').oninput = renderAgenda;
+let sx = null, sy = null;
+$('days').addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+$('days').addEventListener('touchend', e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1); });
+
+/* Ảnh nền: làm mờ sẵn một lần để không lag */
+const PRESETS = [
+  ['Hoàng hôn', ['#5b6a8a','#8a6250','#6e4a52','#8a7448','#2e2926']],
+  ['Đêm xanh', ['#2e3f6e','#47386a','#24506a','#3a4a7a','#14182a']],
+  ['Hồng đào', ['#9a6672','#a5806a','#7e5468','#a58c66','#2e2429']],
+  ['Rừng', ['#3d6655','#6c7f4a','#2f5660','#7f7550','#18221e']],
+  ['Biển', ['#2f6f8f','#3f8a96','#2f4f86','#5a8a86','#101c26']],
+  ['Than chì', ['#4a4a52','#5a524e','#3e424c','#5e5850','#18181b']]];
+const presetCss = c => `radial-gradient(130% 75% at 0% 0%, ${c[0]} 0%, transparent 62%), radial-gradient(120% 75% at 100% 28%, ${c[1]} 0%, transparent 62%), radial-gradient(130% 80% at 15% 100%, ${c[2]} 0%, transparent 66%), radial-gradient(110% 75% at 100% 100%, ${c[3]} 0%, transparent 62%), ${c[4]}`;
+function applyWall(w) { const el = $('wall'); el.classList.remove('blobs');
+  if (w && w.img) el.style.background = `url("${w.img}") center / cover no-repeat`;
+  else el.style.background = presetCss(PRESETS[(w && PRESETS[w.preset]) ? w.preset : 0][1]); }
+let wallState = load('lichWall2', { preset: 0 }); applyWall(wallState);
+function blurImage(file, done) { const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => { const k = Math.min(1, 480 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k)); const ctx = c.getContext('2d');
+    ctx.filter = 'blur(16px) saturate(1.3) brightness(.8)'; ctx.drawImage(img, -24, -24, c.width + 48, c.height + 48);
+    URL.revokeObjectURL(url); done(c.toDataURL('image/jpeg', .82)); };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('Không đọc được ảnh này'); };
+  img.src = url; }
+function openWall(origin) {
+  sheet(origin, `<div class="row"><h3>Ảnh nền</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="upload btn solid round"><span>Tải ảnh từ điện thoại</span><input type="file" id="w-file" accept="image/*" aria-label="Chọn ảnh từ điện thoại"></div>
+    <div class="field"><label>NỀN CÓ SẴN</label><div class="presets">${PRESETS.map((p, i) => `<button class="pre${!wallState.img && wallState.preset === i ? ' on' : ''}" data-i="${i}" style="background:${presetCss(p[1])}"><span>${p[0]}</span></button>`).join('')}</div></div>`, s => {
+    s.querySelectorAll('.pre').forEach(b => b.onclick = () => { wallState = { preset: +b.dataset.i }; applyWall(wallState); save('lichWall2', wallState);
+      s.querySelectorAll('.pre').forEach(x => x.classList.toggle('on', x === b)); toast('Đã đổi ảnh nền'); });
+    s.querySelector('#w-file').onchange = e => { const f = e.target.files && e.target.files[0]; if (!f) return;
+      blurImage(f, data => { wallState = { img: data }; applyWall(wallState); const ok = save('lichWall2', wallState);
+        s.querySelectorAll('.pre').forEach(x => x.classList.remove('on')); toast(ok ? 'Đã đổi ảnh nền' : 'Đã đổi ảnh nền (chưa lưu được lâu dài)'); }); }; }); }
+
+const PRESS = '.btn, .day, .ev:not(.hol), .seg button, .tool, .mo, .pre, .upload, .wk';
+document.addEventListener('pointerdown', e => { const el = e.target.closest(PRESS); if (!el) return;
+  el.classList.add('pressed'); const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, sp = document.createElement('span');
+  sp.className = 'ripple'; sp.style.width = sp.style.height = d + 'px'; sp.style.left = (e.clientX - r.left) + 'px'; sp.style.top = (e.clientY - r.top) + 'px';
+  el.appendChild(sp); setTimeout(() => sp.remove(), 650);
+  if (S.haptic) { try { if (NATIVE) Native.tick(); else if (navigator.vibrate) navigator.vibrate(6); } catch (_) {} }
+  const up = () => setTimeout(() => el.classList.remove('pressed'), 90);
+  el.addEventListener('pointerup', up, { once: true }); el.addEventListener('pointercancel', up, { once: true }); el.addEventListener('pointerleave', up, { once: true });
+}, { passive: true });
+/* ===== Nhắc việc: tính trước 400 ngày rồi giao cho Android đặt báo thức ===== */
+function buildReminders() { const now = new Date(), out = []; let id = 1000;
+  for (let i = -1; i < 400 && out.length < 150; i++) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    for (const e of eventsOn(d)) { if (e.remind == null || e.remind < 0) continue;
+      const [hh, mm] = (e.time || S.allDayAt || '07:00').split(':').map(Number), at = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm - e.remind);
+      if (at <= now) continue; const lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+      const when = e.remind === 0 ? (e.time ? 'Bây giờ' : 'Hôm nay') : REMIND[String(e.remind)].replace('Trước ', 'Còn ');
+      out.push({ id: id++, at: at.getTime(), title: e.title, body: `${when} · ${e.time ? e.time + ', ' : ''}${DOW[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1} (âm ${lu.day}/${lu.month})${e.note ? ' · ' + e.note : ''}` }); } }
+  return out; }
+function syncReminders(askPerm) { if (!NATIVE) return;
+  try { Native.schedule(JSON.stringify(buildReminders()));
+    if (askPerm) { if (!Native.canNotify()) Native.askNotify(); else if (!Native.canExact()) { toast('Bật "Báo thức và lời nhắc" để nhắc đúng giờ'); setTimeout(() => Native.askExact(), 900); } } } catch (e) { console.warn(e); } }
+
+/* ===== Cài đặt ===== */
+function openSettings(origin) {
+  sheet(origin, `<div class="row"><h3>Cài đặt</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <button class="btn glass round pill" id="s-wall" style="width:100%;height:50px">Đổi ảnh nền</button>
+    <div class="field"><label>HIỂN THỊ</label>
+      <label class="sw"><span>Ngày lễ Việt Nam<small>Tết, rằm, giỗ Tổ, Trung Thu...</small></span><input type="checkbox" id="s-vn"${S.vn ? ' checked' : ''}></label>
+      <label class="sw"><span>Ngày lễ Nhật Bản<small>Tô đỏ ngày nghỉ, có nghỉ bù</small></span><input type="checkbox" id="s-jp"${S.jp ? ' checked' : ''}></label>
+      <label class="sw"><span>Rung khi chạm</span><input type="checkbox" id="s-hap"${S.haptic ? ' checked' : ''}></label></div>
+    <div class="field"><label>NHẮC VIỆC</label>
+      <label class="sw"><span>Giờ nhắc sự kiện cả ngày</span><input class="in" type="time" id="s-at" value="${S.allDayAt}"></label>
+      <label class="sw"><span>Nhắc mặc định cho sự kiện mới</span><select class="in" id="s-def" style="width:auto;padding:8px 10px">${Object.keys(REMIND).sort((a, b) => a - b).map(k => `<option value="${k}"${+k === S.defRemind ? ' selected' : ''}>${REMIND[k]}</option>`).join('')}</select></label>
+      ${NATIVE ? '<button class="btn glass round pill" id="s-perm" style="width:100%;height:46px">Kiểm tra quyền thông báo</button>' : '<div class="note">Nhắc việc chỉ chạy trong app trên điện thoại.</div>'}</div>
+    <div class="field"><label>SAO LƯU DỮ LIỆU</label>
+      <div class="note">Sao chép toàn bộ sự kiện thành một đoạn chữ, dán vào Ghi chú hoặc Zalo để cất. Khi đổi máy, dán lại vào ô dưới rồi bấm Khôi phục.</div>
+      <div class="two"><button class="btn glass round pill" id="s-copy" style="height:46px">Sao chép</button><button class="btn glass round pill" id="s-restore" style="height:46px">Khôi phục</button></div>
+      <textarea class="in" id="s-data" placeholder="Dán dữ liệu sao lưu vào đây"></textarea></div>
+    <div class="ver" id="s-ver">Lịch Nhanh${NATIVE ? ' ' + (Native.version() || '') : ' (bản web)'} · ${events.length} sự kiện</div>`, s => {
+    const bind = (id, k) => s.querySelector(id).onchange = e => { S[k] = e.target.checked; saveS(); renderAll(); };
+    bind('#s-vn', 'vn'); bind('#s-jp', 'jp'); bind('#s-hap', 'haptic');
+    s.querySelector('#s-at').onchange = e => { if (e.target.value) { S.allDayAt = e.target.value; saveS(); syncReminders(); toast('Đã đổi giờ nhắc'); } };
+    s.querySelector('#s-def').onchange = e => { S.defRemind = +e.target.value; saveS(); };
+    s.querySelector('#s-wall').onclick = e => openWall(e.currentTarget);
+    const perm = s.querySelector('#s-perm'); if (perm) perm.onclick = () => { if (!Native.canNotify()) { Native.askNotify(); return; } if (!Native.canExact()) { Native.askExact(); return; } toast('Quyền thông báo đã đủ'); };
+    s.querySelector('#s-copy').onclick = async () => { const txt = JSON.stringify({ app: 'lich-nhanh', v: 1, events, settings: S });
+      try { if (NATIVE) Native.copy(txt); else await navigator.clipboard.writeText(txt); toast('Đã sao chép ' + events.length + ' sự kiện'); }
+      catch (e) { const ta = s.querySelector('#s-data'); ta.value = txt; ta.select(); toast('Chọn và sao chép đoạn chữ trong ô'); } };
+    s.querySelector('#s-restore').onclick = () => { const ta = s.querySelector('#s-data'); let txt = ta.value.trim(); if (!txt && NATIVE) txt = Native.paste();
+      try { const o = JSON.parse(txt); if (!o || !Array.isArray(o.events)) throw 0; const ids = new Set(events.map(e => e.id)); let n = 0;
+        o.events.forEach(e => { if (e && e.title && e.start && !ids.has(e.id)) { events.push(mkEvent(e)); n++; } });
+        save('lichEvents2', events); renderAll(); syncReminders(); ta.value = ''; toast(`Đã khôi phục ${n} sự kiện`); }
+      catch (e) { toast('Dữ liệu không đúng, hãy dán lại đoạn sao lưu'); } };
+  }); }
+
+/* ===== Nút quay lại của Android, mở lại app ===== */
+window.onNativeBack = () => { if (openSheet) { closeSheet(); return true; } if (tab !== 'month') { setTab('month'); return true; } return false; };
+window.onNativeResume = () => { const k = keyOf(new Date()); if (window.__lastDay !== k) { window.__lastDay = k; renderAll(); } syncReminders(); };
+
+function boot() { window.__lastDay = keyOf(new Date()); renderAll(); syncReminders(); setInterval(renderTop, 60000); }
+boot();
+</script>
+</body>
+</html>
