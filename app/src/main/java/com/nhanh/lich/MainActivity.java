@@ -1,6 +1,12 @@
 package com.nhanh.lich;
 
 import android.app.Activity;
+import android.graphics.Color;
+import android.graphics.Insets;
+import android.os.Build;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -19,10 +25,12 @@ public class MainActivity extends Activity {
   private static final int REQ_FILE = 11;
   private WebView web;
   private ValueCallback<Uri[]> fileCb;
+  private String insetJs = "";
 
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);
+    edgeToEdge();
     web = new WebView(this);
     web.setBackgroundColor(0xFF2A2522);
     web.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -43,6 +51,26 @@ public class MainActivity extends Activity {
       public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
         return loader.shouldInterceptRequest(request.getUrl());
       }
+      @Override
+      public void onPageFinished(WebView view, String url) {
+        if (!insetJs.isEmpty()) view.evaluateJavascript(insetJs, null);
+      }
+    });
+    web.setOnApplyWindowInsetsListener((v, ins) -> {
+      int t, b, l, r;
+      if (Build.VERSION.SDK_INT >= 30) {
+        Insets bars = ins.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+        Insets ime = ins.getInsets(WindowInsets.Type.ime());
+        t = bars.top; l = bars.left; r = bars.right; b = Math.max(bars.bottom, ime.bottom);
+      } else {
+        t = ins.getSystemWindowInsetTop(); b = ins.getSystemWindowInsetBottom();
+        l = ins.getSystemWindowInsetLeft(); r = ins.getSystemWindowInsetRight();
+      }
+      float d = getResources().getDisplayMetrics().density;
+      insetJs = "(function(s){s.setProperty('--sat','" + Math.round(t / d) + "px');s.setProperty('--sab','" + Math.round(b / d)
+          + "px');s.setProperty('--sal','" + Math.round(l / d) + "px');s.setProperty('--sar','" + Math.round(r / d) + "px');})(document.documentElement.style)";
+      web.evaluateJavascript(insetJs, null);
+      return ins;
     });
     web.setWebChromeClient(new WebChromeClient() {
       @Override
@@ -64,6 +92,29 @@ public class MainActivity extends Activity {
     web.addJavascriptInterface(new Bridge(this), "Native");
     Reminders.ensureChannel(this);
     web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html");
+  }
+
+  /** Tràn viền: nền app nằm dưới thanh trạng thái và thanh điều hướng, biểu tượng hệ thống màu trắng. */
+  private void edgeToEdge() {
+    getWindow().setStatusBarColor(Color.TRANSPARENT);
+    getWindow().setNavigationBarColor(Color.TRANSPARENT);
+    if (Build.VERSION.SDK_INT >= 28) {
+      WindowManager.LayoutParams lp = getWindow().getAttributes();
+      lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+      getWindow().setAttributes(lp);
+    }
+    if (Build.VERSION.SDK_INT >= 29) {
+      getWindow().setNavigationBarContrastEnforced(false);
+      getWindow().setStatusBarContrastEnforced(false);
+    }
+    if (Build.VERSION.SDK_INT >= 30) {
+      getWindow().setDecorFitsSystemWindows(false);
+      WindowInsetsController c = getWindow().getInsetsController();
+      if (c != null) c.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+    } else {
+      getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+          | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
   }
 
   @Override

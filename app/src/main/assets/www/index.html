@@ -235,7 +235,7 @@ select.in option { background: #2b2629; color: #fff; }
 .sheet .inner > * { flex-shrink: 0; }
 .seg button { font-size: 12px; }
 .day.jp .sn { color: var(--sun); }
-.day .hd { position: absolute; top: 5px; right: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--good); opacity: .9; }
+.day .hd { position: absolute; top: 3px; right: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--good); opacity: .9; }
 .day.today .hd { background: #2f9e62; }
 .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; margin-left: 6px; vertical-align: 1px; }
 .tag.good { background: rgba(123,224,166,.2); color: var(--good); }
@@ -258,6 +258,38 @@ select.in option { background: #2b2629; color: #fff; }
 textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
 .note { font-size: 12px; color: var(--ink-3); }
 .ver { text-align: center; font-size: 12px; color: var(--ink-3); }
+/* ===== Bố cục vừa khít một màn hình, mọi kích cỡ, tràn viền dưới thanh trạng thái ===== */
+:root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+html, body { height: 100%; overflow: hidden; }
+body { padding-top: calc(var(--sat) + 8px) !important; padding-bottom: calc(var(--sab) + 8px) !important; }
+.wrap { height: 100%; max-width: 680px; width: 100%; gap: clamp(8px, 1.4vh, 14px); }
+.view { flex: 1 1 auto; min-height: 0; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); }
+.scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#view-month .month { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: clamp(8px, 1.4vh, 14px) 8px; }
+#view-month .days { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(6, minmax(0, 1fr)); row-gap: clamp(2px, .6vh, 6px); }
+#view-month .day { aspect-ratio: auto; height: 100%; min-height: 0; }
+.day .sn { font-size: clamp(16px, min(4.6vw, 2.6vh), 24px); }
+.day .ln { font-size: clamp(10.5px, min(3vw, 1.6vh), 14px); }
+.dow div { padding-bottom: clamp(4px, .8vh, 8px); }
+#daypanel { flex: none; padding: 12px 14px; gap: 8px; }
+#daypanel .chip { width: 50px; height: 50px; } #daypanel .chip b { font-size: 21px; }
+.dp-t { font-size: 15.5px; font-weight: 600; }
+.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-list { display: flex; flex-direction: column; gap: 5px; }
+.dp-list .line { font-size: 13px; display: flex; gap: 8px; align-items: center; min-width: 0; padding: 2px 0; border-radius: 8px; }
+.dp-list .line i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.dp-list .line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-list .ev-l { cursor: pointer; }
+.dock { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 5px; }
+.dock .tool { aspect-ratio: auto; height: clamp(50px, 6.6vh, 62px); border-radius: 16px; background: none; flex-direction: column; gap: 3px; }
+.dock .tool span { font-size: 20px; }
+.credit-s { text-align: center; font-size: 12px; color: var(--ink-3); }
+/* Kính đậm hơn chút để chữ luôn đọc rõ trên ảnh nền sáng */
+.glass { background: linear-gradient(170deg, rgba(255,255,255,.20), rgba(255,255,255,.07) 45%, rgba(255,255,255,.13)), rgba(22,18,26,.22); }
+.sheet { max-height: calc(100% - var(--sat) - var(--sab) - 28px) !important; top: calc(var(--sat) + 14px) !important; }
+.toast { bottom: calc(var(--sab) + 84px) !important; }
+@media (min-width: 600px) { .top .seg { width: 260px; } .dock .tool { font-size: 13px; } }
+@media (max-height: 640px) { #daypanel .one:last-child { display: none; } .dock .tool { height: 46px; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before { animation: none !important; transition-duration: .01s !important; }
 }
@@ -277,7 +309,7 @@ textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
     </div>
   </div>
 
-  <div id="view-month" style="display:flex;flex-direction:column;gap:14px">
+  <div id="view-month" class="view" style="display:flex">
     <div class="glass bar">
       <button class="btn glass round" id="prev" aria-label="Tháng trước">‹</button>
       <h1 id="title" title="Bấm để chọn tháng, năm"></h1>
@@ -290,36 +322,28 @@ textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
     <section class="glass panel" id="daypanel"></section>
   </div>
 
-  <div id="view-week" style="display:none;flex-direction:column;gap:14px">
+  <div id="view-week" class="view" style="display:none">
     <div class="glass bar">
       <button class="btn glass round" id="wprev" aria-label="Tuần trước">‹</button>
       <h1 id="wtitle"></h1>
       <button class="btn glass round" id="wnext" aria-label="Tuần sau">›</button>
     </div>
-    <div class="list-scroll" id="week"></div>
+    <div class="list-scroll scroller" id="week"></div>
   </div>
 
-  <div id="view-agenda" style="display:none;flex-direction:column;gap:14px">
-    <section class="glass panel">
+  <div id="view-agenda" class="view" style="display:none">
+    <section class="glass panel scroller">
       <input class="in" id="search" type="search" placeholder="Tìm sự kiện..." autocomplete="off">
       <div class="list-scroll" id="agenda"></div>
     </section>
   </div>
 
-  <section class="glass panel">
-    <div class="tools">
-      <button class="tool glass" id="t-add"><span>＋</span>Thêm</button>
-      <button class="tool glass" id="t-conv"><span>⇄</span>Đổi ngày</button>
-      <button class="tool glass" id="t-today"><span>◎</span>Hôm nay</button>
-      <button class="tool glass" id="t-set"><span>⚙</span>Cài đặt</button>
-    </div>
-    <div class="row" style="justify-content:space-between">
-      <div><div class="meta">Còn đến Tết <span id="tet-name"></span></div><div class="count"><b id="tet-days">--</b><span class="meta">ngày</span></div></div>
-      <div class="meta2" id="tet-date" style="text-align:right"></div>
-    </div>
-  </section>
-
-  <div class="credit"><b>Lịch Nhanh</b> · Tác giả Trần Thanh Nhanh</div>
+  <nav class="glass dock">
+    <button class="tool" id="t-add"><span>＋</span>Thêm</button>
+    <button class="tool" id="t-conv"><span>⇄</span>Đổi ngày</button>
+    <button class="tool" id="t-today"><span>◎</span>Hôm nay</button>
+    <button class="tool" id="t-set"><span>⚙</span>Cài đặt</button>
+  </nav>
 
 </div>
 
@@ -449,10 +473,11 @@ let selected = strip(new Date()), view = new Date(selected.getFullYear(), select
 function renderTop() { const n = new Date(), lu = toLunar(n.getDate(), n.getMonth() + 1, n.getFullYear());
   $('todayline').textContent = `${DOW_S[n.getDay()]} ${n.getDate()}/${n.getMonth() + 1}`;
   $('lunarline').innerHTML = `<b>${lu.day}/${lu.month}</b> âm lịch`;
-  // đếm ngược Tết
-  let ty = lu.year + 1, tet = toSolar(1, 1, ty); if (strip(n) >= tet) { ty++; tet = toSolar(1, 1, ty); }
-  $('tet-days').textContent = Math.round((tet - strip(n)) / 864e5); $('tet-name').textContent = yearName(ty);
-  $('tet-date').innerHTML = `Mùng 1 Tết<br>${DOW[tet.getDay()]}, ${tet.getDate()}/${tet.getMonth() + 1}/${tet.getFullYear()}`; }
+}
+function tetLine() { const n = strip(new Date()), lu = toLunar(n.getDate(), n.getMonth() + 1, n.getFullYear());
+  let ty = lu.year + 1, tet = toSolar(1, 1, ty); if (n >= tet) { ty++; tet = toSolar(1, 1, ty); }
+  const days = Math.round((tet - n) / 864e5);
+  return days === 0 ? 'Hôm nay là Mùng 1 Tết' : `Còn <b>${days}</b> ngày đến Tết ${yearName(ty)} (${tet.getDate()}/${tet.getMonth() + 1}/${tet.getFullYear()})`; }
 
 function renderMonth(dir) { const y = view.getFullYear(), m = view.getMonth(), mid = toLunar(15, m + 1, y);
   $('title').innerHTML = `Tháng ${m + 1}, ${y} ▾<small>Năm ${yearName(mid.year)}</small>`;
@@ -482,13 +507,16 @@ function holRow(h) { const r = document.createElement('div'); r.className = 'ev 
 
 function renderDayPanel() { const d = selected, lu = toLunar(d.getDate(), d.getMonth() + 1, d.getFullYear()), p = $('daypanel');
   p.innerHTML = `<div class="row"><div class="chip"><span>${DOW_S[d.getDay()]}</span><b>${d.getDate()}</b></div>
-    <div style="min-width:0;flex:1"><h2>${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}</h2>
-    <div class="meta">Âm lịch ${lu.day}/${lu.month}${lu.leap ? ' (nhuận)' : ''} · Năm ${yearName(lu.year)}</div>
-    <div class="meta2">Ngày ${dayName(d)} · Tháng ${monthName(lu)} · ${tietKhi(d)}</div><div style="margin-top:4px;margin-left:-6px">${saoTag(d)}</div></div>
+    <div style="min-width:0;flex:1"><div class="dp-t">${DOW[d.getDay()]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}</div>
+    <div class="meta one">Âm ${lu.day}/${lu.month}${lu.leap ? ' nhuận' : ''} · Ngày ${dayName(d)} · ${tietKhi(d)}</div>
+    <div class="one" style="margin-top:3px;margin-left:-6px">${saoTag(d)}</div></div>
     <button class="btn glass round" id="dp-open" aria-label="Xem chi tiết ngày">⤢</button></div>`;
-  const list = document.createElement('div'); list.style.cssText = 'display:flex;flex-direction:column;gap:8px';
-  holidaysOf(d).forEach(h => list.appendChild(holRow(h))); eventsOn(d).forEach(e => list.appendChild(evRow(e, d)));
-  if (!list.children.length) list.innerHTML = '<div class="empty">Chưa có sự kiện. Bấm "Thêm" để tạo, bấm lại vào ngày để xem chi tiết.</div>';
+  const list = document.createElement('div'); list.className = 'dp-list';
+  const hols = holidaysOf(d), evs = eventsOn(d), items = [];
+  hols.forEach(h => items.push(`<div class="line"><i style="background:${h.kind === 'jp' ? 'var(--sun)' : 'var(--moon)'}"></i><span style="color:${h.kind === 'jp' ? 'var(--sun)' : 'var(--moon)'}">${esc(h.name)}</span></div>`));
+  evs.forEach((e, i) => items.push(`<div class="line ev-l" data-i="${i}"><i style="background:${e.color}"></i><span><b>${e.time || 'Cả ngày'}</b> · ${esc(e.title)}</span></div>`));
+  list.innerHTML = items.length ? items.slice(0, 3).join('') + (items.length > 3 ? `<div class="meta2">+${items.length - 3} mục nữa, bấm ⤢ để xem</div>` : '') : `<div class="meta2">${tetLine()}</div>`;
+  list.querySelectorAll('.ev-l').forEach(el => el.onclick = () => openEditor(evs[+el.dataset.i], d, el));
   p.appendChild(list); $('dp-open').onclick = ev => openDay(d, ev.currentTarget); }
 
 function renderAgenda() { const q = $('search').value.trim().toLowerCase(), box = $('agenda'); box.innerHTML = '';
@@ -736,7 +764,7 @@ function openCrop(src, done) {
       c.getContext('2d').drawImage(img, -tx / S, -ty / S, bw / S, bh / S, 0, 0, W, H); closeSheet(); done(c.toDataURL('image/jpeg', .85)); };
   }); }
 
-const PRESS = '.btn, .day, .ev:not(.hol), .seg button, .tool, .mo, .pre, .upload, .wk';
+const PRESS = '.btn, .day, .ev:not(.hol), .seg button, .tool, .mo, .pre, .upload, .wk, .ev-l';
 document.addEventListener('pointerdown', e => { const el = e.target.closest(PRESS); if (!el) return;
   el.classList.add('pressed'); const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, sp = document.createElement('span');
   sp.className = 'ripple'; sp.style.width = sp.style.height = d + 'px'; sp.style.left = (e.clientX - r.left) + 'px'; sp.style.top = (e.clientY - r.top) + 'px';
@@ -774,6 +802,7 @@ function openSettings(origin) {
       <div class="note">Sao chép toàn bộ sự kiện thành một đoạn chữ, dán vào Ghi chú hoặc Zalo để cất. Khi đổi máy, dán lại vào ô dưới rồi bấm Khôi phục.</div>
       <div class="two"><button class="btn glass round pill" id="s-copy" style="height:46px">Sao chép</button><button class="btn glass round pill" id="s-restore" style="height:46px">Khôi phục</button></div>
       <textarea class="in" id="s-data" placeholder="Dán dữ liệu sao lưu vào đây"></textarea></div>
+    <div class="note" style="text-align:center">${tetLine()}</div>
     <div class="ver" id="s-ver"><b style="color:var(--ink)">Lịch Nhanh</b>${NATIVE ? ' ' + (Native.version() || '') : ' (bản web)'}<br>Tác giả: Trần Thanh Nhanh<br>${events.length} sự kiện đã lưu</div>`, s => {
     const bind = (id, k) => s.querySelector(id).onchange = e => { S[k] = e.target.checked; saveS(); renderAll(); };
     bind('#s-vn', 'vn'); bind('#s-jp', 'jp'); bind('#s-hap', 'haptic');
