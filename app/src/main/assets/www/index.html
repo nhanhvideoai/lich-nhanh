@@ -145,14 +145,19 @@ button { font: inherit; color: inherit; }
 
 /* Sheet — grows from the element that opened it, like an app launching from its icon */
 .sheet-wrap { position: fixed; inset: 0; z-index: 50; }
-.sheet-veil { position: absolute; inset: 0; background: rgba(0,0,0,.18); opacity: 0; transition: opacity .4s; }
+.sheet-veil { position: absolute; inset: 0; background: rgba(0,0,0,.28); opacity: 0; transition: opacity .4s; }
 .sheet-wrap.open .sheet-veil { opacity: 1; }
 .sheet { position: absolute; left: 0; right: 0; margin-inline: auto; top: calc(env(safe-area-inset-top, 0px) + 18px);
   width: min(460px, calc(100% - 2 * max(14px, env(safe-area-inset-left, 0px))));
   max-height: calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 36px);
   transform-origin: 0 0; overflow: hidden; display: flex; flex-direction: column;
   background: var(--sheet); }
-.sheet { -webkit-backdrop-filter: blur(30px) saturate(180%) brightness(1.08); backdrop-filter: blur(30px) saturate(180%) brightness(1.08); }
+.sheet { isolation: isolate; }
+/* Nền khung bật lên: dùng lại ảnh nền đã làm mờ sẵn, không làm mờ trực tiếp nên rất nhẹ */
+.sheet-bg { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background-size: cover; background-position: center; }
+.sheet-bg::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(170deg, rgba(255,255,255,.18), rgba(255,255,255,.06) 50%, rgba(255,255,255,.12)), rgba(30,26,34,.28);
+  box-shadow: inset 1.5px 1.5px 0 rgba(255,255,255,.8), inset -1.2px -1.2px 0 rgba(255,255,255,.45), inset 0 0 22px rgba(255,255,255,.1); }
 .sheet .inner { overflow-y: auto; padding: 20px 18px 22px; display: flex; flex-direction: column; gap: 14px;
   transition: opacity .3s .08s, filter .35s .06s; }
 .sheet.fresh .inner { opacity: 0; }
@@ -496,7 +501,8 @@ let openSheet = null;
 function sheet(originEl, html, onReady) {
   closeSheet(true);
   const wrap = document.createElement('div'); wrap.className = 'sheet-wrap';
-  wrap.innerHTML = `<div class="sheet-veil"></div><div class="sheet glass fresh"><div class="inner">${html}</div></div>`;
+  wrap.innerHTML = `<div class="sheet-veil"></div><div class="sheet glass fresh"><div class="sheet-bg"></div><div class="inner">${html}</div></div>`;
+  wrap.querySelector('.sheet-bg').style.background = window.__wallCss || '';
   document.body.appendChild(wrap); const s = wrap.querySelector('.sheet');
   const final = s.getBoundingClientRect();
   const o = originEl && originEl.isConnected ? originEl.getBoundingClientRect() : { left: final.left + final.width / 2 - 30, top: final.top + 60, width: 60, height: 60 };
@@ -654,8 +660,9 @@ const PRESETS = [
   ['Than chì', ['#4a4a52','#5a524e','#3e424c','#5e5850','#18181b']]];
 const presetCss = c => `radial-gradient(130% 75% at 0% 0%, ${c[0]} 0%, transparent 62%), radial-gradient(120% 75% at 100% 28%, ${c[1]} 0%, transparent 62%), radial-gradient(130% 80% at 15% 100%, ${c[2]} 0%, transparent 66%), radial-gradient(110% 75% at 100% 100%, ${c[3]} 0%, transparent 62%), ${c[4]}`;
 function applyWall(w) { const el = $('wall'); el.classList.remove('blobs');
-  if (w && w.img) el.style.background = `url("${w.img}") center / cover no-repeat`;
-  else el.style.background = presetCss(PRESETS[(w && PRESETS[w.preset]) ? w.preset : 0][1]); }
+  window.__wallCss = (w && w.img) ? `url("${w.img}") center / cover no-repeat` : presetCss(PRESETS[(w && PRESETS[w.preset]) ? w.preset : 0][1]);
+  el.style.background = window.__wallCss;
+  if (openSheet) { const b = openSheet.s.querySelector('.sheet-bg'); if (b) b.style.background = window.__wallCss; } }
 let wallState = load('lichWall2', { preset: 0 }); applyWall(wallState);
 function blurImage(file, done) { const img = new Image(), url = URL.createObjectURL(file);
   img.onload = () => { const k = Math.min(1, 480 / Math.max(img.width, img.height)), c = document.createElement('canvas');
