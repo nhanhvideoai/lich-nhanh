@@ -30,11 +30,12 @@ public class MainActivity extends Activity {
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);
-    edgeToEdge();
+    installCrashLog();
     web = new WebView(this);
     web.setBackgroundColor(0xFF2A2522);
     web.setOverScrollMode(View.OVER_SCROLL_NEVER);
     setContentView(web);
+    try { edgeToEdge(); } catch (Throwable t) { logError(t); }
 
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
@@ -52,11 +53,18 @@ public class MainActivity extends Activity {
         return loader.shouldInterceptRequest(request.getUrl());
       }
       @Override
+      public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+        logError(new RuntimeException("WebView renderer gone, crashed=" + detail.didCrash()));
+        recreate();
+        return true;
+      }
+      @Override
       public void onPageFinished(WebView view, String url) {
         if (!insetJs.isEmpty()) view.evaluateJavascript(insetJs, null);
       }
     });
     web.setOnApplyWindowInsetsListener((v, ins) -> {
+      try {
       int t, b, l, r;
       if (Build.VERSION.SDK_INT >= 30) {
         Insets bars = ins.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -70,6 +78,7 @@ public class MainActivity extends Activity {
       insetJs = "(function(s){s.setProperty('--sat','" + Math.round(t / d) + "px');s.setProperty('--sab','" + Math.round(b / d)
           + "px');s.setProperty('--sal','" + Math.round(l / d) + "px');s.setProperty('--sar','" + Math.round(r / d) + "px');})(document.documentElement.style)";
       web.evaluateJavascript(insetJs, null);
+      } catch (Throwable e) { logError(e); }
       return ins;
     });
     web.setWebChromeClient(new WebChromeClient() {
@@ -92,6 +101,23 @@ public class MainActivity extends Activity {
     web.addJavascriptInterface(new Bridge(this), "Native");
     Reminders.ensureChannel(this);
     web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html");
+  }
+
+  /** Ghi lại lỗi vào file để kiểm tra qua USB: Android/data/com.nhanh.lich/files/loi.txt */
+  private void installCrashLog() {
+    final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+    Thread.setDefaultUncaughtExceptionHandler((th, ex) -> { logError(ex); if (prev != null) prev.uncaughtException(th, ex); });
+  }
+
+  void logError(Throwable t) {
+    try {
+      java.io.File f = new java.io.File(getExternalFilesDir(null), "loi.txt");
+      java.io.StringWriter sw = new java.io.StringWriter();
+      t.printStackTrace(new java.io.PrintWriter(sw));
+      java.io.FileWriter w = new java.io.FileWriter(f, true);
+      w.write(new java.util.Date() + "\n" + sw + "\n");
+      w.close();
+    } catch (Throwable ignored) {}
   }
 
   /** Tràn viền: nền app nằm dưới thanh trạng thái và thanh điều hướng, biểu tượng hệ thống màu trắng. */
