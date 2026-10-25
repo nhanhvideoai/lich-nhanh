@@ -196,6 +196,13 @@ select.in option { background: #2b2629; color: #fff; }
 .months { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .mo { border: 0; cursor: pointer; padding: 14px 0; border-radius: 12px; background: rgba(255,255,255,.10); font-weight: 600; font-size: 14px; transition: transform .35s var(--spring); }
 .mo.on { background: var(--solid); color: var(--solid-ink); }
+.crop { position: relative; overflow: hidden; border-radius: 16px; width: min(100%, calc(48vh * 0.56)); max-width: 100%; margin: 0 auto; background: #000; touch-action: none; cursor: grab;
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6), 0 8px 20px rgba(0,0,0,.3); }
+.crop img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.crop-grid { position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(90deg, transparent 33.2%, rgba(255,255,255,.28) 33.3%, transparent 33.5%, transparent 66.5%, rgba(255,255,255,.28) 66.6%, transparent 66.8%),
+              linear-gradient(transparent 33.2%, rgba(255,255,255,.28) 33.3%, transparent 33.5%, transparent 66.5%, rgba(255,255,255,.28) 66.6%, transparent 66.8%); }
+.zoom { width: 100%; accent-color: #fff; }
 .pre:active, .mo:active { transform: scale(.92); transition-duration: .12s; }
 .foot label { cursor: pointer; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
@@ -677,7 +684,7 @@ async function showWall() { try {
   applyWall(wallState); }
 showWall();
 function readPhoto(file, done) { const img = new Image(), url = URL.createObjectURL(file);
-  img.onload = () => { const k = Math.min(1, 1080 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+  img.onload = () => { const k = Math.min(1, 2400 / Math.max(img.width, img.height)), c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); done(c.toDataURL('image/jpeg', .85)); };
   img.onerror = () => { URL.revokeObjectURL(url); toast('Không đọc được ảnh này'); };
@@ -695,8 +702,39 @@ function openWall(origin) {
     s.querySelectorAll('.pre').forEach(b => b.onclick = () => { wallState = { preset: +b.dataset.i }; save('lichWall2', wallState); showWall();
       s.querySelectorAll('.pre').forEach(x => x.classList.toggle('on', x === b)); toast('Đã đổi ảnh nền'); });
     s.querySelector('#w-file').onchange = e => { const f = e.target.files && e.target.files[0]; if (!f) return;
-      readPhoto(f, async data => { wallState = { src: data, lv }; const ok = save('lichWall2', wallState); await showWall();
-        s.querySelectorAll('.pre').forEach(x => x.classList.remove('on')); toast(ok ? 'Đã đổi ảnh nền' : 'Đã đổi ảnh nền (ảnh quá lớn, chưa lưu được lâu dài)'); }); }; }); }
+      readPhoto(f, data => openCrop(data, async cropped => { wallState = { src: cropped, lv }; const ok = save('lichWall2', wallState); await showWall();
+        toast(ok ? 'Đã đổi ảnh nền' : 'Đã đổi ảnh nền (ảnh quá lớn, chưa lưu được lâu dài)'); })); }; }); }
+
+/* Cắt ảnh: khung đúng tỉ lệ màn hình, kéo để chọn vị trí, hai ngón hoặc thanh trượt để phóng to */
+function openCrop(src, done) {
+  const ar = Math.min(0.75, window.innerWidth / window.innerHeight);
+  sheet(null, `<div class="row"><h3>Chọn phần ảnh</h3><button class="btn glass round" data-close aria-label="Đóng">✕</button></div>
+    <div class="crop" id="c-box" style="aspect-ratio:${ar}"><img id="c-img" alt="Ảnh nền" draggable="false"><div class="crop-grid"></div></div>
+    <input type="range" class="zoom" id="c-zoom" min="1" max="4" step="0.01" value="1" aria-label="Phóng to">
+    <div class="note" style="text-align:center">Kéo ảnh để chọn vị trí. Dùng hai ngón hoặc thanh trượt để phóng to.</div>
+    <div class="acts"><button class="btn glass round" id="c-cancel">Huỷ</button><button class="btn solid round" id="c-ok">Dùng ảnh này</button></div>`, async s => {
+    const box = s.querySelector('#c-box'), im = s.querySelector('#c-img'), zr = s.querySelector('#c-zoom'), img = await loadImg(src);
+    im.src = src; let bw, bh, s0, z = 1, tx = 0, ty = 0;
+    const clamp = () => { const S = s0 * z, w = img.width * S, h = img.height * S; tx = Math.min(0, Math.max(bw - w, tx)); ty = Math.min(0, Math.max(bh - h, ty)); };
+    const draw = () => { clamp(); im.style.transform = `translate(${tx}px, ${ty}px) scale(${s0 * z})`; };
+    const setZoom = (nz, cx, cy) => { nz = Math.min(4, Math.max(1, nz)); const S0 = s0 * z, S1 = s0 * nz; tx = cx - (cx - tx) * S1 / S0; ty = cy - (cy - ty) * S1 / S0; z = nz; zr.value = z; draw(); };
+    const init = () => { bw = box.offsetWidth; bh = box.offsetHeight; s0 = Math.max(bw / img.width, bh / img.height);
+      tx = (bw - img.width * s0) / 2; ty = (bh - img.height * s0) / 2; z = 1; zr.value = 1; draw(); };
+    init();
+    zr.oninput = () => setZoom(+zr.value, bw / 2, bh / 2);
+    const pts = new Map(); let last = null;
+    box.addEventListener('pointerdown', e => { box.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); last = null; });
+    box.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 1) { tx += e.clientX - prev.x; ty += e.clientY - prev.y; draw(); return; }
+      const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = box.getBoundingClientRect(), k = bw / r.width;
+      const cx = ((a.x + b.x) / 2 - r.left) * k, cy = ((a.y + b.y) / 2 - r.top) * k;
+      if (last) setZoom(z * d / last, cx, cy); last = d; });
+    const up = e => { pts.delete(e.pointerId); last = null; };
+    box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+    s.querySelector('#c-cancel').onclick = () => closeSheet();
+    s.querySelector('#c-ok').onclick = () => { const S = s0 * z, H = 1600, W = Math.round(H * ar), c = document.createElement('canvas'); c.width = W; c.height = H;
+      c.getContext('2d').drawImage(img, -tx / S, -ty / S, bw / S, bh / S, 0, 0, W, H); closeSheet(); done(c.toDataURL('image/jpeg', .85)); };
+  }); }
 
 const PRESS = '.btn, .day, .ev:not(.hol), .seg button, .tool, .mo, .pre, .upload, .wk';
 document.addEventListener('pointerdown', e => { const el = e.target.closest(PRESS); if (!el) return;
