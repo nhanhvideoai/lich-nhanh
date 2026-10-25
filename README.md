@@ -2,6 +2,8 @@
 
 Lịch dương kèm âm lịch Việt Nam cho Android, giao diện kính mờ theo phong cách HyperOS.
 
+Tác giả: **Trần Thanh Nhanh**
+
 <img src="design/icon-512.png" width="128" alt="Biểu tượng Lịch Nhanh">
 
 ## Tính năng

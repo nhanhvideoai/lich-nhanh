@@ -217,6 +217,9 @@ select.in option { background: #2b2629; color: #fff; }
 @keyframes pop { from { transform: scale(.8); } }
 .top .seg { width: 200px; }
 .top .sub, .top .right { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brandname { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.credit { text-align: center; font-size: 12px; color: var(--ink-3); padding: 2px 0 6px; }
+.credit b { color: var(--ink-2); font-weight: 600; }
 .sheet .inner > * { flex-shrink: 0; }
 .seg button { font-size: 12px; }
 .day.jp .sn { color: var(--sun); }
@@ -254,7 +257,7 @@ textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
 
 <div class="wrap" id="main">
   <div class="top">
-    <div style="min-width:0"><div class="sub" id="todayline"></div><div class="right" id="lunarline"></div></div>
+    <div style="min-width:0"><div class="brandname">Lịch Nhanh</div><div class="right"><span id="todayline"></span> · <span id="lunarline"></span></div></div>
     <div class="glass round seg" role="tablist">
       <button id="tab-month" class="on" role="tab">Tháng</button>
       <button id="tab-week" role="tab">Tuần</button>
@@ -303,6 +306,8 @@ textarea.in { min-height: 90px; resize: vertical; font-size: 12px; }
       <div class="meta2" id="tet-date" style="text-align:right"></div>
     </div>
   </section>
+
+  <div class="credit"><b>Lịch Nhanh</b> · Tác giả Trần Thanh Nhanh</div>
 
 </div>
 
@@ -430,8 +435,8 @@ let selected = strip(new Date()), view = new Date(selected.getFullYear(), select
 
 /* ===== Hiển thị ===== */
 function renderTop() { const n = new Date(), lu = toLunar(n.getDate(), n.getMonth() + 1, n.getFullYear());
-  $('todayline').textContent = `${DOW[n.getDay()]}, ${n.getDate()}/${n.getMonth() + 1}`;
-  $('lunarline').innerHTML = `<b>${lu.day}/${lu.month}</b> âm · ${yearName(lu.year)}`;
+  $('todayline').textContent = `${DOW_S[n.getDay()]} ${n.getDate()}/${n.getMonth() + 1}`;
+  $('lunarline').innerHTML = `<b>${lu.day}/${lu.month}</b> âm lịch`;
   // đếm ngược Tết
   let ty = lu.year + 1, tet = toSolar(1, 1, ty); if (strip(n) >= tet) { ty++; tet = toSolar(1, 1, ty); }
   $('tet-days').textContent = Math.round((tet - strip(n)) / 864e5); $('tet-name').textContent = yearName(ty);
@@ -707,7 +712,7 @@ function openSettings(origin) {
       <div class="note">Sao chép toàn bộ sự kiện thành một đoạn chữ, dán vào Ghi chú hoặc Zalo để cất. Khi đổi máy, dán lại vào ô dưới rồi bấm Khôi phục.</div>
       <div class="two"><button class="btn glass round pill" id="s-copy" style="height:46px">Sao chép</button><button class="btn glass round pill" id="s-restore" style="height:46px">Khôi phục</button></div>
       <textarea class="in" id="s-data" placeholder="Dán dữ liệu sao lưu vào đây"></textarea></div>
-    <div class="ver" id="s-ver">Lịch Nhanh${NATIVE ? ' ' + (Native.version() || '') : ' (bản web)'} · ${events.length} sự kiện</div>`, s => {
+    <div class="ver" id="s-ver"><b style="color:var(--ink)">Lịch Nhanh</b>${NATIVE ? ' ' + (Native.version() || '') : ' (bản web)'}<br>Tác giả: Trần Thanh Nhanh<br>${events.length} sự kiện đã lưu</div>`, s => {
     const bind = (id, k) => s.querySelector(id).onchange = e => { S[k] = e.target.checked; saveS(); renderAll(); };
     bind('#s-vn', 'vn'); bind('#s-jp', 'jp'); bind('#s-hap', 'haptic');
     s.querySelector('#s-at').onchange = e => { if (e.target.value) { S.allDayAt = e.target.value; saveS(); syncReminders(); toast('Đã đổi giờ nhắc'); } };
