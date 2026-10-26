@@ -76,7 +76,7 @@ public class DichService extends AccessibilityService {
 
   @Override public void onAccessibilityEvent(AccessibilityEvent e) {
     if (buoc == 0) {
-      if (soSuKien++ < 60) ghi(this, "sk pkg=" + e.getPackageName() + " type=" + e.getEventType() + " cls=" + e.getClassName() + " txt=" + e.getText());
+      if (e.getPackageName() != null && !"com.android.chrome".contentEquals(e.getPackageName()) && soSuKien++ < 80) ghi(this, "sk pkg=" + e.getPackageName() + " type=" + e.getEventType() + " cls=" + e.getClassName() + " txt=" + e.getText());
       if ((e.getPackageName() != null && VA.contentEquals(e.getPackageName())) || e.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) chanAiXiaomi();
       return;
     }
