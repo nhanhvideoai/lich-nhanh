@@ -16,7 +16,7 @@ public class Thu extends Activity {
     SharedPreferences sp = getSharedPreferences("c", 0);
     Intent it = getIntent();
     if (it.hasExtra("dat")) sp.edit().putInt("cach", it.getIntExtra("dat", 1)).apply();
-    int cach = it.hasExtra("cach") ? it.getIntExtra("cach", 0) : sp.getInt("cach", 1);
+    int cach = it.hasExtra("cach") ? it.getIntExtra("cach", 0) : sp.getInt("cach", 20);
     try { out = new PrintWriter(new FileWriter(new File(getExternalFilesDir(null), "ketqua.txt"), true)); }
     catch (Exception e) { out = new PrintWriter(new StringWriter()); }
     out.println("=== cach " + cach + " action=" + it.getAction() + " " + new Date());
@@ -44,6 +44,7 @@ public class Thu extends Activity {
       case 8: startService(new Intent("com.xiaomi.aiasst.vision.ACTION_TRANSLATE_SERVICE").setPackage(V)); break;
       case 9: startActivity(a("miui.intent.action.ACTION_START_AI_SUBTITLE")); break;
       case 10: startActivity(a("miui.intent.action.AITranslateDetailsActivity")); break;
+      case 20: DichService.batDau(this); break;
       case 11: startActivity(new Intent().setComponent(c(".intent.IntentAiTranslateServiceActivity"))
                 .putExtra("from", "desktop_shortcut").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); break;
     }

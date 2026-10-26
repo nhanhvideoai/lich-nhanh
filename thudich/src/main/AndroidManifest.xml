@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <queries><package android:name="com.xiaomi.aiasst.vision"/></queries>
+  <queries><package android:name="com.xiaomi.aiasst.vision"/><package android:name="com.miui.voiceassist"/></queries>
   <application android:label="Nhanh Dịch" android:icon="@android:drawable/ic_menu_view">
     <activity android:name=".Thu" android:exported="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -7,5 +7,11 @@
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
       <intent-filter><action android:name="android.intent.action.ASSIST"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
     </activity>
+    <service android:name=".DichService" android:exported="false"
+        android:label="Nhanh Dịch"
+        android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+      <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+      <meta-data android:name="android.accessibilityservice" android:resource="@xml/dich_service"/>
+    </service>
   </application>
 </manifest>
