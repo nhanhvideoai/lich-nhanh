@@ -57,7 +57,6 @@ public class DichService extends AccessibilityService {
       cay(r, 0, sb);
       ghi(this, sb.length() > 3000 ? sb.substring(0, 3000) : sb.toString());
       performGlobalAction(GLOBAL_ACTION_BACK);
-      h.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_BACK), 150);
       h.postDelayed(() -> batDau(this), 450);
       return true;
     }
