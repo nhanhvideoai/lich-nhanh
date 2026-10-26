@@ -36,7 +36,7 @@ public class DichService extends AccessibilityService {
     if (ban != null) ban.quetLai(0);
   }
 
-  @Override protected void onServiceConnected() { ban = this; ghi(this, "service ket noi"); }
+  @Override protected void onServiceConnected() { ban = this; soSuKien = 0; ghi(this, "service ket noi"); }
   @Override public boolean onUnbind(Intent i) { if (ban == this) ban = null; return super.onUnbind(i); }
   @Override public void onInterrupt() {}
 
@@ -76,10 +76,8 @@ public class DichService extends AccessibilityService {
 
   @Override public void onAccessibilityEvent(AccessibilityEvent e) {
     if (buoc == 0) {
-      if (e.getPackageName() != null && VA.contentEquals(e.getPackageName())) {
-        if (soSuKien++ < 40) ghi(this, "sk VA type=" + e.getEventType() + " cls=" + e.getClassName() + " win=" + e.getWindowId() + " txt=" + e.getText());
-        chanAiXiaomi();
-      }
+      if (soSuKien++ < 60) ghi(this, "sk pkg=" + e.getPackageName() + " type=" + e.getEventType() + " cls=" + e.getClassName() + " txt=" + e.getText());
+      if ((e.getPackageName() != null && VA.contentEquals(e.getPackageName())) || e.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) chanAiXiaomi();
       return;
     }
     if (SystemClock.uptimeMillis() - cho > 12000) { ghi(this, "het gio o buoc " + buoc); buoc = 0; return; }
