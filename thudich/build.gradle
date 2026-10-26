@@ -3,5 +3,14 @@ android {
   namespace 'com.nhanh.dich'
   compileSdk 34
   defaultConfig { applicationId 'com.nhanh.dich'; minSdk 26; targetSdk 34; versionCode 2; versionName '0.2' }
+  signingConfigs {
+    rel {
+      storeFile rootProject.file('app/release.jks')
+      storePassword System.getenv('KS_PASS')
+      keyAlias 'lichnhanh'
+      keyPassword System.getenv('KS_PASS')
+    }
+  }
+  buildTypes { release { minifyEnabled false; signingConfig signingConfigs.rel } }
   compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
