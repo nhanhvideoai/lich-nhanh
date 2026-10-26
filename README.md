@@ -21,3 +21,6 @@ Tác giả: **Trần Thanh Nhanh**
 ## Cài đặt
 
 Tải file `.apk` mới nhất ở mục **Releases**, hoặc thêm kho này vào **Obtainium** để tự cập nhật.
+
+## Tự cập nhật
+App tự kiểm tra bản mới trên GitHub khi mở app và khoảng 6 tiếng một lần, có bản mới thì tự tải và cài. Tắt/bật trong **Cài đặt → Cập nhật → Tự động cập nhật** (mặc định bật).
