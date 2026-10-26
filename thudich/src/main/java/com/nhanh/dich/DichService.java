@@ -36,7 +36,19 @@ public class DichService extends AccessibilityService {
     if (ban != null) ban.quetLai(0);
   }
 
-  @Override protected void onServiceConnected() { ban = this; soSuKien = 0; ghi(this, "service ket noi"); }
+  static int tongSuKien = 0;
+  final Runnable tuanTra = new Runnable() { public void run() {
+    try {
+      android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+      if (buoc == 0 && pm.isInteractive()) chanAiXiaomi();
+    } catch (Throwable t) { ghi(DichService.this, "loi tuan tra " + t); }
+    h.postDelayed(this, 300);
+  }};
+
+  @Override protected void onServiceConnected() {
+    ban = this; soSuKien = 0; ghi(this, "service ket noi");
+    h.removeCallbacks(tuanTra); h.postDelayed(tuanTra, 1000);
+  }
   @Override public boolean onUnbind(Intent i) { if (ban == this) ban = null; return super.onUnbind(i); }
   @Override public void onInterrupt() {}
 
@@ -75,6 +87,7 @@ public class DichService extends AccessibilityService {
   }
 
   @Override public void onAccessibilityEvent(AccessibilityEvent e) {
+    tongSuKien++;
     if (buoc == 0) {
       if (e.getPackageName() != null && !"com.android.chrome".contentEquals(e.getPackageName()) && soSuKien++ < 80) ghi(this, "sk pkg=" + e.getPackageName() + " type=" + e.getEventType() + " cls=" + e.getClassName() + " txt=" + e.getText());
       if ((e.getPackageName() != null && VA.contentEquals(e.getPackageName())) || e.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) chanAiXiaomi();
@@ -124,6 +137,7 @@ public class DichService extends AccessibilityService {
 
   static void xemCay(Context c) {
     if (ban == null) { ghi(c, "xemCay: service chua chay"); return; }
+    ghi(c, "tong su kien = " + tongSuKien);
     StringBuilder sb = new StringBuilder();
     for (AccessibilityWindowInfo w : ban.getWindows()) {
       AccessibilityNodeInfo r = w.getRoot();
