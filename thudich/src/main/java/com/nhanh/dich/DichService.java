@@ -40,7 +40,7 @@ public class DichService extends AccessibilityService {
   @Override public boolean onUnbind(Intent i) { if (ban == this) ban = null; return super.onUnbind(i); }
   @Override public void onInterrupt() {}
 
-  static long lanChan = 0;
+  static long lanChan = 0; static int soSuKien = 0;
 
   // Khi AI Xiaomi bật lên (giữ thanh dưới) -> đóng nó và bật dịch màn hình
   boolean chanAiXiaomi() {
@@ -50,8 +50,11 @@ public class DichService extends AccessibilityService {
       AccessibilityNodeInfo r = w.getRoot();
       if (r == null || r.getPackageName() == null || !r.getPackageName().toString().equals(VA)) continue;
       Rect b = new Rect(); w.getBoundsInScreen(b);
-      if (b.height() < 900) continue;
+      if (soSuKien < 40) ghi(this, "  win VA " + b.toShortString() + " type=" + w.getType());
       if (coIdChua(r, "trans", 0) || coIdChua(r, "loading", 0)) continue;
+      boolean nghe = !r.findAccessibilityNodeInfosByText("我在听").isEmpty() || !r.findAccessibilityNodeInfosByText("松手发送").isEmpty()
+          || !r.findAccessibilityNodeInfosByText("Đang nghe").isEmpty() || !r.findAccessibilityNodeInfosByText("listening").isEmpty();
+      if (b.height() < 900 && !nghe) continue;
       lanChan = now;
       StringBuilder sb = new StringBuilder("chan AI Xiaomi: win " + b.toShortString() + "\n");
       cay(r, 0, sb);
@@ -73,7 +76,10 @@ public class DichService extends AccessibilityService {
 
   @Override public void onAccessibilityEvent(AccessibilityEvent e) {
     if (buoc == 0) {
-      if (e.getPackageName() != null && VA.contentEquals(e.getPackageName())) chanAiXiaomi();
+      if (e.getPackageName() != null && VA.contentEquals(e.getPackageName())) {
+        if (soSuKien++ < 40) ghi(this, "sk VA type=" + e.getEventType() + " cls=" + e.getClassName() + " win=" + e.getWindowId() + " txt=" + e.getText());
+        chanAiXiaomi();
+      }
       return;
     }
     if (SystemClock.uptimeMillis() - cho > 12000) { ghi(this, "het gio o buoc " + buoc); buoc = 0; return; }

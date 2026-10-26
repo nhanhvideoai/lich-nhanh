@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
   namespace 'com.nhanh.dich'
   compileSdk 34
-  defaultConfig { applicationId 'com.nhanh.dich'; minSdk 26; targetSdk 34; versionCode 7; versionName '0.7' }
+  defaultConfig { applicationId 'com.nhanh.dich'; minSdk 26; targetSdk 34; versionCode 8; versionName '0.8' }
   signingConfigs {
     rel {
       storeFile rootProject.file('app/release.jks')
