@@ -16,13 +16,14 @@ public class DichService extends AccessibilityService {
   static volatile long cho = 0;      // thời điểm bắt đầu chờ
   static volatile int buoc = 0;      // 1: chờ ô Dịch màn hình, 2: chờ nút Start
   static DichService ban;
+  static long thay = 0, lanBam = 0; static int soLan = 0;
   final Handler h = new Handler(Looper.getMainLooper());
 
   static final String[] O_DICH = {"Dịch màn hình", "Screen translation", "Translate screen", "屏幕翻译"};
   static final String[] NUT_START = {"Start", "Bắt đầu", "开始", "開始"};
 
   static void batDau(Context c) {
-    cho = SystemClock.uptimeMillis(); buoc = 1;
+    cho = SystemClock.uptimeMillis(); buoc = 1; thay = 0; lanBam = 0; soLan = 0;
     ghi(c, "batDau, service=" + (ban != null));
     Intent i = new Intent().setComponent(new ComponentName(V, V + ".ui.MainActivity"))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
@@ -56,9 +57,28 @@ public class DichService extends AccessibilityService {
       }
       if (buoc == 2 && pk.equals(VA)) {
         AccessibilityNodeInfo n = tim(r, NUT_START);
-        if (n != null) { bam(n); buoc = 0; ghi(this, "bam Start - xong"); return; }
+        long now = SystemClock.uptimeMillis();
+        if (n != null) {
+          if (thay == 0) thay = now;
+          if (now - thay >= 500 && now - lanBam >= 1200) {
+            if (soLan >= 4) { buoc = 0; ghi(this, "bam Start 4 lan khong an"); return; }
+            Rect b = new Rect(); n.getBoundsInScreen(b);
+            AccessibilityNodeInfo p = n; while (p != null && !p.isClickable()) p = p.getParent();
+            if (p != null) p.getBoundsInScreen(b);
+            cham(b.centerX(), b.centerY());
+            lanBam = now; soLan++;
+            ghi(this, "cham Start lan " + soLan + " tai " + b.toShortString());
+          }
+          return;
+        } else if (soLan > 0) { buoc = 0; ghi(this, "Start bien mat - dang dich"); return; }
       }
     }
+  }
+
+  void cham(int x, int y) {
+    Path path = new Path(); path.moveTo(x, y);
+    dispatchGesture(new GestureDescription.Builder()
+        .addStroke(new GestureDescription.StrokeDescription(path, 0, 50)).build(), null, null);
   }
 
   AccessibilityNodeInfo tim(AccessibilityNodeInfo r, String[] chu) {
