@@ -40,8 +40,43 @@ public class DichService extends AccessibilityService {
   @Override public boolean onUnbind(Intent i) { if (ban == this) ban = null; return super.onUnbind(i); }
   @Override public void onInterrupt() {}
 
+  static long lanChan = 0;
+
+  // Khi AI Xiaomi bật lên (giữ thanh dưới) -> đóng nó và bật dịch màn hình
+  boolean chanAiXiaomi() {
+    long now = SystemClock.uptimeMillis();
+    if (now - lanChan < 4000) return false;
+    for (AccessibilityWindowInfo w : getWindows()) {
+      AccessibilityNodeInfo r = w.getRoot();
+      if (r == null || r.getPackageName() == null || !r.getPackageName().toString().equals(VA)) continue;
+      Rect b = new Rect(); w.getBoundsInScreen(b);
+      if (b.height() < 900) continue;
+      if (coIdChua(r, "trans", 0) || coIdChua(r, "loading", 0)) continue;
+      lanChan = now;
+      StringBuilder sb = new StringBuilder("chan AI Xiaomi: win " + b.toShortString() + "\n");
+      cay(r, 0, sb);
+      ghi(this, sb.length() > 3000 ? sb.substring(0, 3000) : sb.toString());
+      performGlobalAction(GLOBAL_ACTION_BACK);
+      h.postDelayed(() -> performGlobalAction(GLOBAL_ACTION_BACK), 150);
+      h.postDelayed(() -> batDau(this), 450);
+      return true;
+    }
+    return false;
+  }
+
+  static boolean coIdChua(AccessibilityNodeInfo n, String s, int d) {
+    if (n == null || d > 12) return false;
+    String id = n.getViewIdResourceName();
+    if (id != null && id.toLowerCase().contains(s)) return true;
+    for (int i = 0; i < n.getChildCount(); i++) if (coIdChua(n.getChild(i), s, d + 1)) return true;
+    return false;
+  }
+
   @Override public void onAccessibilityEvent(AccessibilityEvent e) {
-    if (buoc == 0) return;
+    if (buoc == 0) {
+      if (e.getPackageName() != null && VA.contentEquals(e.getPackageName())) chanAiXiaomi();
+      return;
+    }
     if (SystemClock.uptimeMillis() - cho > 12000) { ghi(this, "het gio o buoc " + buoc); buoc = 0; return; }
     quet();
   }
