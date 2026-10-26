@@ -19,12 +19,17 @@ public class DichService extends AccessibilityService {
   static long thay = 0, lanBam = 0; static int soLan = 0;
   final Handler h = new Handler(Looper.getMainLooper());
 
+  static final String SW = "com.miui.voiceassist:id/cl_trans_sw";
   static final String[] O_DICH = {"Dịch màn hình", "Screen translation", "Translate screen", "屏幕翻译"};
   static final String[] NUT_START = {"Start", "Bắt đầu", "开始", "開始"};
 
   static void batDau(Context c) {
-    cho = SystemClock.uptimeMillis(); buoc = 1; thay = 0; lanBam = 0; soLan = 0;
     ghi(c, "batDau, service=" + (ban != null));
+    if (ban != null) {
+      AccessibilityNodeInfo sw = ban.timId(SW);
+      if (sw != null) { ban.bam(sw); ghi(c, "da co thanh dich ben canh -> bat/tat"); return; }
+    }
+    cho = SystemClock.uptimeMillis(); buoc = 1; thay = 0; lanBam = 0; soLan = 0;
     Intent i = new Intent().setComponent(new ComponentName(V, V + ".ui.MainActivity"))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
     c.startActivity(i);
@@ -71,6 +76,10 @@ public class DichService extends AccessibilityService {
           }
           return;
         } else if (soLan > 0) { buoc = 0; ghi(this, "Start bien mat - dang dich"); return; }
+        else if (now - cho > 1500) {
+          List<AccessibilityNodeInfo> l = r.findAccessibilityNodeInfosByViewId(SW);
+          if (!l.isEmpty()) { bam(l.get(0)); buoc = 0; ghi(this, "thanh thu gon -> bam nut dich"); return; }
+        }
       }
     }
   }
@@ -95,6 +104,16 @@ public class DichService extends AccessibilityService {
       .append(" t=").append(n.getText()).append(" d=").append(n.getContentDescription())
       .append(n.isClickable() ? " CLICK" : "").append(' ').append(b.toShortString()).append('\n');
     for (int i = 0; i < n.getChildCount(); i++) cay(n.getChild(i), d + 1, sb);
+  }
+
+  AccessibilityNodeInfo timId(String id) {
+    for (AccessibilityWindowInfo w : getWindows()) {
+      AccessibilityNodeInfo r = w.getRoot();
+      if (r == null || r.getPackageName() == null || !r.getPackageName().toString().equals(VA)) continue;
+      List<AccessibilityNodeInfo> l = r.findAccessibilityNodeInfosByViewId(id);
+      if (!l.isEmpty()) return l.get(0);
+    }
+    return null;
   }
 
   void cham(int x, int y) {
