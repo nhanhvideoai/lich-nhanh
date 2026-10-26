@@ -70,6 +70,13 @@ public class Bridge {
 
   @JavascriptInterface public void refreshWidget() { LichWidget.updateAll(c); }
 
+  // ---- Tự cập nhật ----
+  @JavascriptInterface public String capNhat() { return CapNhat.trangThai(c).toString(); }
+  @JavascriptInterface public void datTuDong(boolean b) { CapNhat.datTuDong(c, b); }
+  @JavascriptInterface public void kiemTraCapNhat() {
+    CapNhat.kiemTra(c, true, t -> ((MainActivity) act).goiJs("window.onCapNhat&&onCapNhat(" + t + ")"));
+  }
+
   @JavascriptInterface public String version() {
     try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName; }
     catch (Exception e) { return ""; }

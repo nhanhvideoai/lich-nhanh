@@ -11,5 +11,6 @@ public class BootReceiver extends BroadcastReceiver {
     Reminders.ensureChannel(c);
     Reminders.scheduleAll(c);
     LichWidget.updateAll(c);
+    CapNhat.lenLich(c);
   }
 }

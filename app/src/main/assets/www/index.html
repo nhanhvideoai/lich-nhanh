@@ -802,6 +802,10 @@ function openSettings(origin) {
       <div class="note">Sao chép toàn bộ sự kiện thành một đoạn chữ, dán vào Ghi chú hoặc Zalo để cất. Khi đổi máy, dán lại vào ô dưới rồi bấm Khôi phục.</div>
       <div class="two"><button class="btn glass round pill" id="s-copy" style="height:46px">Sao chép</button><button class="btn glass round pill" id="s-restore" style="height:46px">Khôi phục</button></div>
       <textarea class="in" id="s-data" placeholder="Dán dữ liệu sao lưu vào đây"></textarea></div>
+    ${NATIVE && Native.capNhat ? `<div class="field"><label>CẬP NHẬT</label>
+      <label class="sw"><span>Tự động cập nhật<small>Có bản mới là tự tải và cài</small></span><input type="checkbox" id="s-auto"${JSON.parse(Native.capNhat()).tuDong ? ' checked' : ''}></label>
+      <div class="note" id="s-upd">${capNhatChu(JSON.parse(Native.capNhat()))}</div>
+      <button class="btn glass round pill" id="s-check" style="width:100%;height:46px">Kiểm tra cập nhật</button></div>` : ''}
     <div class="note" style="text-align:center">${tetLine()}</div>
     <div class="ver" id="s-ver"><b style="color:var(--ink)">Lịch Nhanh</b>${NATIVE ? ' ' + (Native.version() || '') : ' (bản web)'}<br>Tác giả: Trần Thanh Nhanh<br>${events.length} sự kiện đã lưu</div>`, s => {
     const bind = (id, k) => s.querySelector(id).onchange = e => { S[k] = e.target.checked; saveS(); renderAll(); };
@@ -809,6 +813,8 @@ function openSettings(origin) {
     s.querySelector('#s-at').onchange = e => { if (e.target.value) { S.allDayAt = e.target.value; saveS(); syncReminders(); toast('Đã đổi giờ nhắc'); } };
     s.querySelector('#s-def').onchange = e => { S.defRemind = +e.target.value; saveS(); };
     s.querySelector('#s-wall').onclick = e => openWall(e.currentTarget);
+    const au = s.querySelector('#s-auto'); if (au) au.onchange = e => { Native.datTuDong(e.target.checked); toast(e.target.checked ? 'Đã bật tự động cập nhật' : 'Đã tắt tự động cập nhật'); };
+    const ck = s.querySelector('#s-check'); if (ck) ck.onclick = () => { const u = s.querySelector('#s-upd'); u.textContent = 'Đang kiểm tra…'; Native.kiemTraCapNhat(); };
     const perm = s.querySelector('#s-perm'); if (perm) perm.onclick = () => { if (!Native.canNotify()) { Native.askNotify(); return; } if (!Native.canExact()) { Native.askExact(); return; } toast('Quyền thông báo đã đủ'); };
     s.querySelector('#s-copy').onclick = async () => { const txt = JSON.stringify({ app: 'lich-nhanh', v: 1, events, settings: S });
       try { if (NATIVE) Native.copy(txt); else await navigator.clipboard.writeText(txt); toast('Đã sao chép ' + events.length + ' sự kiện'); }
@@ -819,6 +825,10 @@ function openSettings(origin) {
         save('lichEvents2', events); renderAll(); syncReminders(); ta.value = ''; toast(`Đã khôi phục ${n} sự kiện`); }
       catch (e) { toast('Dữ liệu không đúng, hãy dán lại đoạn sao lưu'); } };
   }); }
+
+/* ===== Tự cập nhật ===== */
+function capNhatChu(t) { return `Đang dùng bản ${t.phienBan}` + (t.thongBao ? ` · ${t.thongBao}` : ''); }
+window.onCapNhat = t => { const u = document.getElementById('s-upd'); if (u) u.textContent = capNhatChu(t); if (t.banMoi && !t.tuDong) toast('Có bản mới ' + t.banMoi + ' – vào Cài đặt để cập nhật'); };
 
 /* ===== Nút quay lại của Android, mở lại app ===== */
 window.onNativeBack = () => { if (openSheet) { closeSheet(); return true; } if (tab !== 'month') { setTab('month'); return true; } return false; };
