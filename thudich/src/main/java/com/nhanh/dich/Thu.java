@@ -45,6 +45,7 @@ public class Thu extends Activity {
       case 9: startActivity(a("miui.intent.action.ACTION_START_AI_SUBTITLE")); break;
       case 10: startActivity(a("miui.intent.action.AITranslateDetailsActivity")); break;
       case 20: DichService.batDau(this); break;
+      case 30: DichService.xemCay(this); break;
       case 11: startActivity(new Intent().setComponent(c(".intent.IntentAiTranslateServiceActivity"))
                 .putExtra("from", "desktop_shortcut").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); break;
     }

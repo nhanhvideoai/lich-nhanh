@@ -75,6 +75,28 @@ public class DichService extends AccessibilityService {
     }
   }
 
+  static void xemCay(Context c) {
+    if (ban == null) { ghi(c, "xemCay: service chua chay"); return; }
+    StringBuilder sb = new StringBuilder();
+    for (AccessibilityWindowInfo w : ban.getWindows()) {
+      AccessibilityNodeInfo r = w.getRoot();
+      sb.append("## win type=").append(w.getType()).append(" layer=").append(w.getLayer())
+        .append(" pkg=").append(r == null ? null : r.getPackageName()).append('\n');
+      if (r != null && r.getPackageName() != null && !r.getPackageName().toString().equals("com.android.chrome")) cay(r, 0, sb);
+    }
+    ghi(c, sb.toString());
+  }
+
+  static void cay(AccessibilityNodeInfo n, int d, StringBuilder sb) {
+    if (n == null || d > 25) return;
+    Rect b = new Rect(); n.getBoundsInScreen(b);
+    for (int i = 0; i < d; i++) sb.append(' ');
+    sb.append(n.getClassName()).append(" id=").append(n.getViewIdResourceName())
+      .append(" t=").append(n.getText()).append(" d=").append(n.getContentDescription())
+      .append(n.isClickable() ? " CLICK" : "").append(' ').append(b.toShortString()).append('\n');
+    for (int i = 0; i < n.getChildCount(); i++) cay(n.getChild(i), d + 1, sb);
+  }
+
   void cham(int x, int y) {
     Path path = new Path(); path.moveTo(x, y);
     dispatchGesture(new GestureDescription.Builder()
